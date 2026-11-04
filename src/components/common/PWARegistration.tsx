@@ -72,6 +72,8 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .register('/sw.js')
           .then((reg) => {
             console.log('[PWA] Service Worker registered:', reg.scope);
+            // Force an update check every time app or page opens
+            reg.update();
           })
           .catch((err) => {
             console.warn('[PWA] Service Worker registration failed:', err);
