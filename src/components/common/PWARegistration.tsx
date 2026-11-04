@@ -485,7 +485,7 @@ export const PWAInstallButton: React.FC = () => {
   return (
     <button
       onClick={installApp}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer"
+      className="btn-3d flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white text-xs font-bold cursor-pointer"
       title="Install FileForge on your Phone, Windows, or Mac"
     >
       <Download className="w-3.5 h-3.5" />

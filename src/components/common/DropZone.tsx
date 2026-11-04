@@ -93,11 +93,16 @@ export const DropZone: React.FC<DropZoneProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
+        className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-300 ${
           isDragging
-            ? 'border-blue-500 bg-blue-500/10 scale-[1.01]'
-            : 'border-white/15 bg-slate-900/40 hover:border-blue-500/50 hover:bg-slate-900/60'
+            ? 'border-cyan-400 bg-blue-500/15 scale-[1.01]'
+            : 'border-white/15 bg-gradient-to-b from-slate-900/60 to-slate-950/70 hover:border-cyan-500/50 hover:bg-slate-900/80'
         }`}
+        style={{
+          boxShadow: isDragging
+            ? '0 25px 50px -10px rgba(6, 182, 212, 0.35), inset 0 0 40px rgba(6, 182, 212, 0.2)'
+            : 'inset 0 2px 12px rgba(0, 0, 0, 0.6), 0 12px 30px -10px rgba(0, 0, 0, 0.5)',
+        }}
       >
         <input
           ref={inputRef}
@@ -110,25 +115,25 @@ export const DropZone: React.FC<DropZoneProps> = ({
 
         <div className="flex flex-col items-center justify-center">
           <div
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-transform ${
+            className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 ${
               isDragging
-                ? 'bg-blue-500/20 text-blue-400 scale-110'
-                : 'bg-white/5 text-slate-400 group-hover:text-blue-400'
+                ? 'bg-cyan-500/25 text-cyan-300 scale-110 rotate-6 shadow-lg shadow-cyan-500/30'
+                : 'bg-white/5 text-slate-400 hover:scale-105 shadow-inner'
             }`}
           >
             <UploadCloud className="w-8 h-8" />
           </div>
 
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{label}</h3>
-          <p className="text-xs sm:text-sm text-slate-400 mb-4">
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1">{label}</h3>
+          <p className="text-xs sm:text-sm text-slate-400 mb-5">
             Supports {accept.length > 0 ? accept.join(', ') : 'all file formats'} • Up to{' '}
             {maxFiles > 1 ? `${maxFiles} files at once (Batch)` : '1 file'}
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3.5">
             <button
               type="button"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/20 transition hover:scale-105 active:scale-95 cursor-pointer"
+              className="btn-3d px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-bold cursor-pointer"
             >
               Choose {maxFiles > 1 ? 'Files (Batch)' : 'File'}
             </button>
@@ -139,7 +144,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
                 e.stopPropagation();
                 setShowCameraModal(true);
               }}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              className="btn-3d-slate px-4 py-2.5 rounded-xl bg-slate-800 border border-cyan-500/30 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 cursor-pointer"
               title="Take a photo directly with your camera"
             >
               <Camera className="w-4 h-4 text-cyan-400" />

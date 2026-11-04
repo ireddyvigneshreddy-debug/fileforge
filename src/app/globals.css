@@ -191,3 +191,104 @@ body {
 .animate-star-pop {
   animation: star-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+/* 3D Perspective & Transform Utilities */
+.perspective-800 {
+  perspective: 800px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* 3D Perspective Ground Grid */
+.cyber-grid-3d {
+  background-image: 
+    linear-gradient(to right, rgba(59, 130, 246, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.16) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 1) 25%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 1) 25%, transparent 75%);
+}
+
+/* Tactile 3D Buttons with Physical Push Depth */
+.btn-3d {
+  position: relative;
+  transition: all 0.15s ease-out;
+  box-shadow: 0 4px 0 #1d4ed8, 0 8px 18px rgba(37, 99, 235, 0.4);
+  transform: translateY(0);
+}
+
+.btn-3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #1d4ed8, 0 12px 24px rgba(37, 99, 235, 0.5);
+}
+
+.btn-3d:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #1d4ed8, 0 3px 6px rgba(37, 99, 235, 0.3);
+}
+
+.btn-3d-emerald {
+  position: relative;
+  transition: all 0.15s ease-out;
+  box-shadow: 0 4px 0 #059669, 0 8px 18px rgba(16, 185, 129, 0.4);
+  transform: translateY(0);
+}
+
+.btn-3d-emerald:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #059669, 0 12px 24px rgba(16, 185, 129, 0.5);
+}
+
+.btn-3d-emerald:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #059669, 0 3px 6px rgba(16, 185, 129, 0.3);
+}
+
+.btn-3d-slate {
+  position: relative;
+  transition: all 0.15s ease-out;
+  box-shadow: 0 3px 0 #1e293b, 0 6px 14px rgba(0, 0, 0, 0.5);
+  transform: translateY(0);
+}
+
+.btn-3d-slate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #334155, 0 10px 20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-3d-slate:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1e293b, 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 3D Laser Scanner Sweep Animation */
+@keyframes laser-sweep {
+  0% { top: 0%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 96%; opacity: 0; }
+}
+
+.animate-laser {
+  animation: laser-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* 3D Beveled Pill */
+.badge-3d {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+

@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { QuickFindModal } from '@/components/common/QuickFindModal';
 import { InteractiveToolCard } from '@/components/common/InteractiveToolCard';
+import { Hero3DStage } from '@/components/common/Hero3DStage';
 import { GlobalDropDetector } from '@/components/common/GlobalDropDetector';
 import { IconRenderer } from '@/components/common/IconRenderer';
 import { TOOLS, CATEGORIES, ToolCategory, ToolDefinition } from '@/lib/tools-registry';
@@ -218,6 +219,9 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 3D INTERACTIVE ISOMETRIC SHOWCASE STAGE */}
+        <Hero3DStage />
+
         {/* PINNED / FAVORITES SECTION (Shown if user has pinned tools) */}
         {favoriteTools.length > 0 && (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 animate-in fade-in duration-300">
@@ -315,15 +319,15 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Interactive Pill Tabs */}
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {/* Interactive 3D Pill Tabs */}
+            <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-2 scrollbar-none pt-1">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 cursor-pointer ${
                   selectedCategory === 'all'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 scale-105'
-                    : 'bg-slate-900/60 border border-white/10 text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
+                    : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'
                 }`}
               >
                 All ({categoryCounts.all})
@@ -334,15 +338,15 @@ export default function HomePage() {
                   type="button"
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
                     selectedCategory === cat.id
-                      ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 scale-105'
-                      : 'bg-slate-900/60 border border-white/10 text-slate-400 hover:text-white hover:bg-slate-800'
+                      ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
+                      : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'
                   }`}
                 >
                   <IconRenderer name={cat.icon} className="w-3.5 h-3.5" />
                   <span>{cat.label}</span>
-                  <span className="text-[10px] opacity-60">({categoryCounts[cat.id]})</span>
+                  <span className="text-[10px] opacity-75 font-normal">({categoryCounts[cat.id]})</span>
                 </button>
               ))}
             </div>
