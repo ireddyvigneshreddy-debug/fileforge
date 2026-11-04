@@ -65,15 +65,39 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActivePlatform('windows');
     }
 
-    // 2. Register Service Worker immediately
+    // 2. Register Service Worker with instant auto-update support
     if ('serviceWorker' in navigator) {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+
       const registerSW = () => {
         navigator.serviceWorker
           .register('/sw.js')
           .then((reg) => {
             console.log('[PWA] Service Worker registered:', reg.scope);
-            // Force an update check every time app or page opens
+            // Force immediate update check
             reg.update();
+
+            // If a worker is waiting, activate it immediately
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              }
+            });
           })
           .catch((err) => {
             console.warn('[PWA] Service Worker registration failed:', err);

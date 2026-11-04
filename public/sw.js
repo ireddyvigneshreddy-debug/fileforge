@@ -1,5 +1,5 @@
 // FileForge Pro Service Worker - Offline-First PWA Cache
-const CACHE_NAME = 'fileforge-v2';
+const CACHE_NAME = 'fileforge-v3';
 
 const STATIC_PRECACHE = [
   '/',
@@ -57,7 +57,14 @@ const TOOL_SLUGS = [
   'text-diff',
 ];
 
-// Install: Pre-cache shell, static core assets, and all 40 tool routes
+// Message listener for immediate takeover
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Install: Pre-cache shell, static core assets, and all 40+ tool routes
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -66,7 +73,7 @@ self.addEventListener('install', (event) => {
         // 1. Critical core shell
         await cache.addAll(STATIC_PRECACHE);
 
-        // 2. Pre-cache all 40 tool pages in parallel (safe with allSettled)
+        // 2. Pre-cache all tool pages in parallel (safe with allSettled)
         const toolUrls = TOOL_SLUGS.map((slug) => `/tools/${slug}`);
         await Promise.allSettled(toolUrls.map((url) => cache.add(url)));
       })
@@ -77,7 +84,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: Clean up old caches & take control immediately
+// Activate: Purge any old cache versions & take control immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -86,6 +93,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((name) => {
             if (name !== CACHE_NAME) {
+              console.log('[SW] Purging old cache version:', name);
               return caches.delete(name);
             }
           })
@@ -104,10 +112,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Ignore non-http/https (e.g. chrome-extension://)
+  // Ignore non-http/https
   if (!url.protocol.startsWith('http')) return;
 
-  // 1. Navigation requests (HTML pages)
+  // 1. Navigation requests (HTML pages): Network-First so users always get the freshest version!
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -178,7 +186,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Stale-While-Revalidate for everything else (Next.js RSC data, fonts, etc.)
+  // 3. Stale-While-Revalidate for everything else
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkPromise = fetch(request)
