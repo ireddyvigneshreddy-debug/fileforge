@@ -1,5 +1,5 @@
 // FileForge Pro Service Worker - Offline-First PWA Cache
-const CACHE_NAME = 'fileforge-v1';
+const CACHE_NAME = 'fileforge-v2';
 
 const STATIC_PRECACHE = [
   '/',
@@ -14,6 +14,7 @@ const STATIC_PRECACHE = [
 ];
 
 const TOOL_SLUGS = [
+  'scan-to-pdf',
   'merge-pdf',
   'split-pdf',
   'compress-pdf',

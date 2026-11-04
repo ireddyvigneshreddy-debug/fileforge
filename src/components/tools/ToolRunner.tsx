@@ -339,15 +339,15 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           author: metaAuthor,
         });
         outFileName = `metadata-${files[0].name}`;
-      } else if (tool.id === 'images-to-pdf') {
-        if (files.length === 0) throw new Error('Please select one or more images.');
-        setMessage(`Embedding ${files.length} images into PDF canvas...`);
+      } else if (tool.id === 'images-to-pdf' || tool.id === 'scan-to-pdf') {
+        if (files.length === 0) throw new Error('Please snap or select one or more photos.');
+        setMessage(`Compiling ${files.length} scanned photos into PDF document...`);
         setProgress(60);
         outBlob = await PDFEngine.imagesToPDF(files, {
           pageSize: imgPdfSize,
           orientation: imgPdfOrientation,
         });
-        outFileName = 'images-collection.pdf';
+        outFileName = tool.id === 'scan-to-pdf' ? `scanned-document-${Date.now()}.pdf` : 'images-collection.pdf';
         originalSize = files.reduce((acc, f) => acc + f.size, 0);
       } else if (tool.id === 'text-to-pdf') {
         setMessage('Paginating and rendering typography...');
@@ -1432,7 +1432,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               )}
 
               {/* 7. Images to PDF */}
-              {tool.id === 'images-to-pdf' && (
+              {(tool.id === 'images-to-pdf' || tool.id === 'scan-to-pdf') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">Paper Size:</label>

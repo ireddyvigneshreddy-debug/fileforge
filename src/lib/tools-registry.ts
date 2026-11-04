@@ -31,6 +31,22 @@ export const CATEGORIES: { id: ToolCategory; label: string; icon: string; descri
 export const TOOLS: ToolDefinition[] = [
   // ================= PDF TOOLS =================
   {
+    id: 'scan-to-pdf',
+    slug: 'scan-to-pdf',
+    name: 'Camera Scan to PDF',
+    category: 'pdf',
+    description: 'Take photos of documents or receipts directly with your camera and create a PDF.',
+    longDescription:
+      'Snap photos of documents, notes, or receipts with your phone or computer camera and compile them into a multi-page PDF.',
+    icon: 'Camera',
+    badge: 'New',
+    accept: ['image/*', '.jpg', '.jpeg', '.png', '.webp'],
+    maxFiles: 50,
+    actionLabel: 'Generate Scanned PDF',
+    keywords: ['camera', 'scan', 'take photo', 'photo to pdf', 'scanner', 'camera to pdf'],
+    features: ['Direct camera capture', 'Multi-page document scanning', 'Auto orientation', '100% offline & private'],
+  },
+  {
     id: 'merge-pdf',
     slug: 'merge-pdf',
     name: 'Merge PDF',

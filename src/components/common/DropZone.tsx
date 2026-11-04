@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { UploadCloud, File, Trash2, ArrowUp, ArrowDown, AlertCircle } from 'lucide-react';
+import { UploadCloud, File, Trash2, ArrowUp, ArrowDown, AlertCircle, Camera } from 'lucide-react';
+import { CameraCaptureModal } from '@/components/common/CameraCaptureModal';
 
 interface DropZoneProps {
   files: File[];
@@ -20,6 +21,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const formatSize = (bytes: number) => {
@@ -123,14 +125,44 @@ export const DropZone: React.FC<DropZoneProps> = ({
             {maxFiles > 1 ? `${maxFiles} files at once (Batch)` : '1 file'}
           </p>
 
-          <button
-            type="button"
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/20 transition hover:scale-105 active:scale-95"
-          >
-            Choose {maxFiles > 1 ? 'Files (Batch)' : 'File'}
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/20 transition hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              Choose {maxFiles > 1 ? 'Files (Batch)' : 'File'}
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCameraModal(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              title="Take a photo directly with your camera"
+            >
+              <Camera className="w-4 h-4 text-cyan-400" />
+              <span>Take Photo</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Live Camera Viewfinder Modal */}
+      <CameraCaptureModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onPhotosCaptured={(newPhotos) => {
+          if (maxFiles === 1) {
+            onFilesChange([newPhotos[0]]);
+          } else {
+            const combined = [...files, ...newPhotos].slice(0, maxFiles);
+            onFilesChange(combined);
+          }
+        }}
+        maxPhotos={maxFiles}
+      />
 
       {/* Error message */}
       {errorMsg && (
