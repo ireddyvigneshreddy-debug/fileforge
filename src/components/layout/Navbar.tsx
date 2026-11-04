@@ -16,6 +16,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { CATEGORIES } from '@/lib/tools-registry';
+import { PWAInstallButton } from '@/components/common/PWARegistration';
 
 interface NavbarProps {
   onSearchClick?: () => void;
@@ -98,6 +99,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
 
         {/* Right Action: Privacy Badge & Search & Theme */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <PWAInstallButton />
+
           <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>100% Client-Side Privacy</span>

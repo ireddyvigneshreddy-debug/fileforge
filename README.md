@@ -34,6 +34,11 @@ Most online file converters (Smallpdf, iLovePDF, CloudConvert) upload your sensi
    - Initial page loads in **~140ms TTFB** via pre-rendered static routes on Vercel's Edge CDN.
    - Unlimited scalability: $0 server compute bills with 100% uptime.
 
+3. **📱 100% Offline Progressive Web App (PWA)**
+   - Pre-caches all 40+ utilities and core assets locally via a custom Service Worker.
+   - Installable directly to your Mac Dock or mobile home screen as a standalone desktop app.
+   - Operates entirely air-gapped without an internet connection.
+
 3. **📦 Multi-File Batch Processing Engine**
    - Supports selecting or dropping 30–50 files at once.
    - Non-blocking asynchronous processing loops with live per-file progress tracking.
