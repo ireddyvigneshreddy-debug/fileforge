@@ -4,24 +4,41 @@ export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: '/',
     name: 'FileForge Pro — In-Browser File Utilities',
     short_name: 'FileForge',
     description: 'Privacy-First, Local-First In-Browser File & PDF Utilities (45+ Tools)',
     start_url: '/',
+    scope: '/',
     display: 'standalone',
     background_color: '#080c14',
     theme_color: '#080c14',
     orientation: 'any',
+    categories: ['utilities', 'productivity'],
     icons: [
       {
         src: '/icons/icon-192.png',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
       },
       {
         src: '/icons/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
       {
         src: '/icons/icon.svg',
