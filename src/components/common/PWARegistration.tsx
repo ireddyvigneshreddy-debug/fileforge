@@ -112,17 +112,15 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 // Ready-to-use Install & Offline Status Button for Navbar
 export const PWAInstallButton: React.FC = () => {
-  const { isInstalled, isOnline, canInstall, installApp } = usePWA();
+  const { isInstalled, isOnline, installApp } = usePWA();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
-
   // If offline, display prominent offline badge
-  if (!isOnline) {
+  if (mounted && !isOnline) {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-medium animate-pulse">
         <WifiOff className="w-3.5 h-3.5" />
@@ -132,7 +130,7 @@ export const PWAInstallButton: React.FC = () => {
   }
 
   // If already running inside installed standalone app
-  if (isInstalled) {
+  if (mounted && isInstalled) {
     return (
       <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-medium">
         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -145,7 +143,7 @@ export const PWAInstallButton: React.FC = () => {
   return (
     <button
       onClick={installApp}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer"
       title="Install FileForge as a standalone offline desktop app"
     >
       <Download className="w-3.5 h-3.5" />
