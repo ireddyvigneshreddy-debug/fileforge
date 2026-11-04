@@ -125,10 +125,10 @@ export default function HomePage() {
       {/* Interactive Drag & Drop Anywhere Detector */}
       <GlobalDropDetector />
 
-      {/* Dynamic Animated Ambient Aura Lighting */}
+      {/* Dynamic Animated Ambient Aura Lighting (Desktop only to prevent mobile GPU lag) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] ambient-glow-1 pointer-events-none" />
-      <div className="absolute top-32 left-1/4 w-[600px] h-[400px] bg-gradient-to-tr from-cyan-600/10 via-indigo-600/10 to-transparent blur-3xl pointer-events-none animate-aurora" />
-      <div className="absolute top-64 right-1/4 w-[500px] h-[350px] bg-gradient-to-bl from-purple-600/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none animate-pulse-subtle" />
+      <div className="hidden md:block absolute top-32 left-1/4 w-[600px] h-[400px] bg-gradient-to-tr from-cyan-600/10 via-indigo-600/10 to-transparent blur-3xl pointer-events-none animate-aurora" />
+      <div className="hidden md:block absolute top-64 right-1/4 w-[500px] h-[350px] bg-gradient-to-bl from-purple-600/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none animate-pulse-subtle" />
 
       <Navbar onSearchClick={() => setIsQuickFindOpen(true)} />
 
@@ -219,8 +219,10 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3D INTERACTIVE ISOMETRIC SHOWCASE STAGE */}
-        <Hero3DStage />
+        {/* 3D INTERACTIVE ISOMETRIC SHOWCASE STAGE (Desktop Only) */}
+        <div className="hidden md:block">
+          <Hero3DStage />
+        </div>
 
         {/* PINNED / FAVORITES SECTION (Shown if user has pinned tools) */}
         {favoriteTools.length > 0 && (

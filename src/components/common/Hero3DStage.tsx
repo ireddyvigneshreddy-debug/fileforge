@@ -9,6 +9,22 @@ export const Hero3DStage: React.FC = () => {
   const [tilt, setTilt] = useState({ rotateX: 6, rotateY: 0, glareX: 50, glareY: 50 });
   const [isInteracting, setIsInteracting] = useState(false);
   const [activeSlate, setActiveSlate] = useState<number | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    // Only render and run 3D computations on desktop
+    const check = () => {
+      setIsDesktop(window.matchMedia('(min-width: 768px) and (hover: hover)').matches);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Return null on phone / mobile to ensure zero lag and instant performance
+  if (!isDesktop) {
+    return null;
+  }
 
   // Mouse move handler over 3D stage
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

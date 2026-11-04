@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Star } from 'lucide-react';
 import { ToolDefinition, ToolCategory } from '@/lib/tools-registry';
@@ -21,8 +21,22 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
 }) => {
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0, glareX: 50, glareY: 50 });
   const [isHovered, setIsHovered] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    // Only enable 3D interactive tilt on desktop devices with hover & fine pointer
+    const checkDesktop = () => {
+      const isFinePointer = window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)').matches;
+      setIsDesktop(isFinePointer);
+    };
+
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isDesktop) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -30,7 +44,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    // 3D Tilt calculation (max ~8.5 degrees)
     const rotateX = -((y - centerY) / centerY) * 8.5;
     const rotateY = ((x - centerX) / centerX) * 8.5;
 
@@ -40,11 +53,15 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
     setTilt({ rotateX, rotateY, glareX, glareY });
   };
 
-  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseEnter = () => {
+    if (isDesktop) setIsHovered(true);
+  };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
-    setTilt({ rotateX: 0, rotateY: 0, glareX: 50, glareY: 50 });
+    if (isDesktop) {
+      setIsHovered(false);
+      setTilt({ rotateX: 0, rotateY: 0, glareX: 50, glareY: 50 });
+    }
   };
 
   const getCategoryTheme = (cat: ToolCategory) => {
@@ -86,6 +103,79 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
 
   const theme = getCategoryTheme(tool.category);
 
+  // MOBILE: Ultra-lightweight, 0 3D layers, zero touch lag, instant 120 FPS scrolling
+  if (!isDesktop) {
+    return (
+      <Link
+        href={`/tools/${tool.slug}`}
+        className="group relative p-4 rounded-2xl bg-slate-900/80 border border-white/10 active:border-cyan-400/50 flex flex-col justify-between overflow-hidden shadow-sm active:scale-[0.99] transition-transform"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center border ${theme.bg} ${theme.border} ${theme.color}`}
+            >
+              <IconRenderer name={tool.icon} className="w-5 h-5" />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleFavorite(tool.slug, e);
+                  }}
+                  className={`p-1.5 rounded-lg ${
+                    isFavorite
+                      ? 'text-amber-400 bg-amber-400/10'
+                      : 'text-slate-500 hover:text-amber-400'
+                  }`}
+                  aria-label="Toggle favorite"
+                >
+                  <Star
+                    className={`w-4 h-4 ${
+                      isFavorite ? 'fill-amber-400' : ''
+                    }`}
+                  />
+                </button>
+              )}
+
+              {showBadge && tool.badge && (
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-semibold text-[10px] uppercase tracking-wider">
+                  {tool.badge}
+                </span>
+              )}
+
+              <span className="px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10 text-[10px] font-medium capitalize">
+                {tool.category}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center justify-between">
+              <span>{tool.name}</span>
+              <ArrowRight className="w-4 h-4 text-slate-500" />
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+              {tool.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2.5 mt-2.5 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+          <span className="text-slate-500 font-medium">100% In-Browser</span>
+          <span className="text-blue-400 font-semibold flex items-center gap-1">
+            Open <ArrowRight className="w-3 h-3 inline" />
+          </span>
+        </div>
+      </Link>
+    );
+  }
+
+  // DESKTOP: Full 3D interactive tilt, parallax translateZ, and specular glare
   return (
     <div className="perspective-1000 w-full" style={{ perspective: '1000px' }}>
       <Link
@@ -107,7 +197,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
             : '0 4px 16px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.07)',
         }}
       >
-        {/* 3D Dynamic Specular Glare Sheen that moves with mouse */}
         {isHovered && (
           <div
             className="pointer-events-none absolute -inset-px rounded-2xl opacity-60 transition-opacity duration-200 z-30"
@@ -117,19 +206,15 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
           />
         )}
 
-        {/* 3D Beveled Top Rim Light */}
         <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
-        {/* Ambient Category Glow in 3D depth */}
         <div
           className={`absolute top-0 right-0 w-36 h-36 rounded-full blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-300 pointer-events-none ${theme.bg}`}
           style={{ transform: 'translateZ(-10px)' }}
         />
 
-        {/* 3D Elevated Content Block */}
         <div className="space-y-3 relative z-10" style={{ transformStyle: 'preserve-3d' }}>
           <div className="flex items-center justify-between" style={{ transformStyle: 'preserve-3d' }}>
-            {/* 3D Floating Icon Box */}
             <div
               className={`w-11 h-11 rounded-xl flex items-center justify-center border ${theme.bg} ${theme.border} ${theme.color} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md`}
               style={{
@@ -141,7 +226,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
               <IconRenderer name={tool.icon} className="w-5 h-5" />
             </div>
 
-            {/* 3D Floating Badges & Star Button */}
             <div
               className="flex items-center gap-1.5"
               style={{
@@ -149,7 +233,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
                 transition: 'transform 0.2s ease-out',
               }}
             >
-              {/* Star Favorite Button */}
               {onToggleFavorite && (
                 <button
                   type="button"
@@ -182,7 +265,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
             </div>
           </div>
 
-          {/* 3D Floating Title & Description */}
           <div
             style={{
               transform: isHovered ? 'translateZ(18px)' : 'translateZ(0px)',
@@ -199,7 +281,6 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
           </div>
         </div>
 
-        {/* 3D Floating Bottom Bar */}
         <div
           className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 relative z-10"
           style={{
