@@ -18,6 +18,7 @@ import {
 import { CATEGORIES } from '@/lib/tools-registry';
 import { PWAInstallButton } from '@/components/common/PWARegistration';
 import { QuickFindModal } from '@/components/common/QuickFindModal';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 interface NavbarProps {
   onSearchClick?: () => void;
@@ -78,11 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 p-[1px] shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-slate-950/80 rounded-[11px] flex items-center justify-center backdrop-blur-sm">
-                <Sparkles className="w-5 h-5 text-cyan-400 group-hover:rotate-12 transition-transform" />
-              </div>
-            </div>
+            <BrandLogo size={40} />
             <div>
               <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
                 File<span className="gradient-text font-black">Forge</span>

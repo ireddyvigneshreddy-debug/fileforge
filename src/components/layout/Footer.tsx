@@ -1,14 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Sparkles } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 export const Footer: React.FC = () => {
   return (
     <footer className="border-t border-white/10 bg-slate-950/60 py-8 mt-16 text-xs text-slate-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Brand */}
-        <div className="flex items-center gap-2 text-slate-400">
-          <Sparkles className="w-4 h-4 text-blue-400" />
+        <div className="flex items-center gap-2.5 text-slate-400">
+          <BrandLogo size={22} glow={false} />
           <span className="font-semibold text-white">FileForge Pro</span>
           <span>&mdash; Local-first file utilities</span>
         </div>

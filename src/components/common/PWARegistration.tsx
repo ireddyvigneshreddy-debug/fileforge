@@ -15,6 +15,7 @@ import {
   Smartphone,
   Laptop,
 } from 'lucide-react';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -266,11 +267,7 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             {/* Header */}
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 p-[1px] shadow-lg shadow-blue-500/20">
-                <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-cyan-400" />
-                </div>
-              </div>
+              <BrandLogo size={46} />
               <div>
                 <h2 id="modal-title" className="text-lg font-bold text-white">Install FileForge Pro</h2>
                 <p className="text-xs text-slate-400">Works 100% offline on any phone, tablet, or computer</p>

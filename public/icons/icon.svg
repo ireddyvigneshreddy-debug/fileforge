@@ -1,56 +1,123 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0b1120" />
+    <!-- Badge Background Gradients -->
+    <linearGradient id="badgeBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
       <stop offset="50%" stop-color="#080c14" />
-      <stop offset="100%" stop-color="#040711" />
+      <stop offset="100%" stop-color="#020617" />
     </linearGradient>
-    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#06b6d4" />
-      <stop offset="50%" stop-color="#3b82f6" />
-      <stop offset="100%" stop-color="#8b5cf6" />
-    </linearGradient>
-    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+
+    <linearGradient id="badgeBorder" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="35%" stop-color="#6366f1" />
+      <stop offset="70%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Primary Top Origami Blade (Cyan to Electric Blue) -->
+    <linearGradient id="bladeTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="60%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+
+    <!-- Vertical Anvil Pillar (Deep Indigo / Violet) -->
+    <linearGradient id="pillarLeft" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="40%" stop-color="#6366f1" />
       <stop offset="100%" stop-color="#3b82f6" />
     </linearGradient>
-    <linearGradient id="docGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e293b" />
-      <stop offset="100%" stop-color="#0f172a" />
+
+    <!-- Forge Heat Crossbar (Neon Magenta to Orange Fire) -->
+    <linearGradient id="forgeHeat" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e" />
+      <stop offset="60%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#fbbf24" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+
+    <!-- 3D Isometric Shadow Overlay -->
+    <linearGradient id="facetShadow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Core Spark Glow Filter -->
+    <filter id="logoSparkGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
   </defs>
 
-  <!-- Background Base -->
-  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bgGrad)" />
-  <rect x="16" y="16" width="480" height="480" rx="108" fill="none" stroke="url(#borderGrad)" stroke-width="12" />
+  <!-- Ambient Outer Glow -->
+  <rect x="24" y="24" width="464" height="464" rx="136" fill="#06b6d4" opacity="0.15" filter="url(#logoSparkGlow)" />
 
-  <!-- Document Sheet in Background -->
-  <g transform="translate(136, 110)">
-    <rect x="0" y="0" width="240" height="292" rx="28" fill="url(#docGrad)" stroke="#334155" stroke-width="4" />
-    <!-- Folded Corner -->
-    <path d="M 176 0 L 240 64 L 176 64 Z" fill="#334155" />
-    <path d="M 176 0 L 240 64 L 240 0 Z" fill="#0b1120" />
-    
-    <!-- Document Lines -->
-    <rect x="36" y="90" width="168" height="12" rx="6" fill="#3b82f6" opacity="0.4" />
-    <rect x="36" y="122" width="120" height="12" rx="6" fill="#3b82f6" opacity="0.3" />
-    <rect x="36" y="154" width="148" height="12" rx="6" fill="#3b82f6" opacity="0.3" />
-    <rect x="36" y="186" width="100" height="12" rx="6" fill="#3b82f6" opacity="0.2" />
-  </g>
+  <!-- Outer Hex-Squircle Shield Container -->
+  <rect
+    x="24"
+    y="24"
+    width="464"
+    height="464"
+    rx="136"
+    fill="url(#badgeBase)"
+    stroke="url(#badgeBorder)"
+    stroke-width="14"
+  />
 
-  <!-- Foreground Lightning / Spark Forge Icon -->
-  <g filter="url(#glow)">
-    <polygon points="276,140 186,280 256,280 236,372 326,232 256,232" fill="url(#boltGrad)" />
-  </g>
+  <!-- Subtle Internal Geometric Grid Lines -->
+  <path
+    d="M 96 256 H 416 M 256 96 V 416"
+    stroke="rgba(255, 255, 255, 0.05)"
+    stroke-width="3"
+    stroke-dasharray="12 18"
+  />
 
-  <!-- Sparkles -->
-  <g fill="#38bdf8">
-    <path d="M 370 120 Q 370 135 385 135 Q 370 135 370 150 Q 370 135 355 135 Q 370 135 370 120 Z" />
-    <path d="M 120 340 Q 120 352 132 352 Q 120 352 120 364 Q 120 352 108 352 Q 120 352 120 340 Z" opacity="0.8" />
+  <!-- --- 3D FORGED 'F' MONOGRAM RIBBONS --- -->
+
+  <!-- 1. Left Vertical Pillar (Anvil spine) -->
+  <path
+    d="M 136 120 C 136 106.7 146.7 96 160 96 H 208 V 384 C 208 397.3 197.3 408 184 408 H 160 C 146.7 408 136 397.3 136 384 Z"
+    fill="url(#pillarLeft)"
+  />
+
+  <!-- 2. Top Horizontal Forging Arm (Angular Arrow / Prism Header) -->
+  <path
+    d="M 184 96 H 368 C 381.3 96 389.9 109.2 384.5 121.4 L 358.4 180 C 354.8 188.2 346.7 193.4 337.8 193.4 H 184 V 96 Z"
+    fill="url(#bladeTop)"
+  />
+
+  <!-- 3. Top Specular Bevel Accent -->
+  <path
+    d="M 192 104 H 364 L 350 136 H 192 Z"
+    fill="rgba(255, 255, 255, 0.35)"
+  />
+
+  <!-- 4. Middle Forge Heat Ribbon (Glowing Magenta-Orange transformation bar) -->
+  <path
+    d="M 184 220 H 312 C 325.3 220 333.9 233.2 328.5 245.4 L 308.8 289.6 C 305.2 297.8 297.1 303 288.2 303 H 184 V 220 Z"
+    fill="url(#forgeHeat)"
+  />
+
+  <!-- 5. Isometric Shadow Fold connecting Pillar & Ribbons -->
+  <path
+    d="M 184 96 L 208 120 V 384 L 184 408 Z"
+    fill="url(#facetShadow)"
+    opacity="0.6"
+  />
+
+  <!-- 6. Glowing Quantum Core Diamond Spark -->
+  <g filter="url(#logoSparkGlow)">
+    <polygon
+      points="368,96 392,128 368,160 344,128"
+      fill="#a5f3fc"
+    />
+    <circle
+      cx="368"
+      cy="128"
+      r="10"
+      fill="#ffffff"
+    />
   </g>
 </svg>
