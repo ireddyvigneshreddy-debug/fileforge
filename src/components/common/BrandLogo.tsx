@@ -141,14 +141,14 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
         {/* 6. Glowing Quantum Core Diamond Spark */}
         <g filter="url(#logoSparkGlow)">
-          <polygon
-            points="46,14 49,18 46,22 43,18"
-            fill="#a5f3fc"
+          <path
+            d="M 46 11 Q 46 15 50 15 Q 46 15 46 19 Q 46 15 42 15 Q 46 15 46 11 Z"
+            fill="#e0f2fe"
           />
           <circle
             cx="46"
-            cy="18"
-            r="1.2"
+            cy="15"
+            r="0.8"
             fill="#ffffff"
           />
         </g>

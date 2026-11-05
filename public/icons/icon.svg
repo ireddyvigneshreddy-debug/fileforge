@@ -1,49 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Badge Background Gradients -->
-    <linearGradient id="badgeBase" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Deep Obsidian Radial Space Background -->
+    <radialGradient id="spaceBg" cx="50%" cy="45%" r="65%">
       <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="50%" stop-color="#080c14" />
-      <stop offset="100%" stop-color="#020617" />
-    </linearGradient>
+      <stop offset="45%" stop-color="#080c14" />
+      <stop offset="85%" stop-color="#04060c" />
+      <stop offset="100%" stop-color="#020307" />
+    </radialGradient>
 
-    <linearGradient id="badgeBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Ambient Core Plasma Halo -->
+    <radialGradient id="plasmaGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.32" />
+      <stop offset="40%" stop-color="#6366f1" stop-opacity="0.22" />
+      <stop offset="70%" stop-color="#ec4899" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Outer Squircle Ring Border -->
+    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="35%" stop-color="#6366f1" />
+      <stop offset="30%" stop-color="#6366f1" />
       <stop offset="70%" stop-color="#ec4899" />
       <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <!-- Primary Top Origami Blade (Cyan to Electric Blue) -->
+    <!-- Top Laser Blade (Cyan -> Electric Blue) -->
     <linearGradient id="bladeTop" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="60%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#06b6d4" />
       <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
 
-    <!-- Vertical Anvil Pillar (Deep Indigo / Violet) -->
+    <!-- Left Anvil Spine (Electric Violet -> Indigo) -->
     <linearGradient id="pillarLeft" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8" />
-      <stop offset="40%" stop-color="#6366f1" />
-      <stop offset="100%" stop-color="#3b82f6" />
+      <stop offset="0%" stop-color="#a5b4fc" />
+      <stop offset="30%" stop-color="#818cf8" />
+      <stop offset="70%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#312e81" />
     </linearGradient>
 
-    <!-- Forge Heat Crossbar (Neon Magenta to Orange Fire) -->
+    <!-- Forge Plasma Crossbar (Hot Pink -> Amber Gold) -->
     <linearGradient id="forgeHeat" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#f43f5e" />
-      <stop offset="60%" stop-color="#ec4899" />
+      <stop offset="50%" stop-color="#ec4899" />
       <stop offset="100%" stop-color="#fbbf24" />
     </linearGradient>
 
-    <!-- 3D Isometric Shadow Overlay -->
-    <linearGradient id="facetShadow" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- 3D Isometric Crease Shadow -->
+    <linearGradient id="creaseShadow" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0284c7" />
-      <stop offset="100%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#090d16" />
     </linearGradient>
 
     <!-- Core Spark Glow Filter -->
-    <filter id="logoSparkGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur" />
+    <filter id="intenseGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="24" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
@@ -51,73 +70,75 @@
     </filter>
   </defs>
 
-  <!-- Ambient Outer Glow -->
-  <rect x="24" y="24" width="464" height="464" rx="136" fill="#06b6d4" opacity="0.15" filter="url(#logoSparkGlow)" />
+  <!-- 1. FULL BLEED BACKGROUND (Ensures 100% Android Maskable compliance) -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#spaceBg)" />
 
-  <!-- Outer Hex-Squircle Shield Container -->
+  <!-- 2. AMBIENT RADIANT CORE PLASMA -->
+  <circle cx="256" cy="256" r="230" fill="url(#plasmaGlow)" />
+
+  <!-- 3. CYBERNETIC RADAR / ORBITAL DEPTH RINGS (Subtle tech blueprint) -->
+  <circle cx="256" cy="256" r="215" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="2" stroke-dasharray="8 12" />
+  <circle cx="256" cy="256" r="175" fill="none" stroke="rgba(6, 182, 212, 0.08)" stroke-width="1.5" />
+  <circle cx="256" cy="256" r="125" fill="none" stroke="rgba(99, 102, 241, 0.06)" stroke-width="1" stroke-dasharray="4 6" />
+
+  <!-- 4. INNER 3D SHIELD GLOW (Safe-zone framing) -->
   <rect
-    x="24"
-    y="24"
-    width="464"
-    height="464"
-    rx="136"
-    fill="url(#badgeBase)"
-    stroke="url(#badgeBorder)"
-    stroke-width="14"
+    x="32"
+    y="32"
+    width="448"
+    height="448"
+    rx="124"
+    fill="none"
+    stroke="url(#shieldBorder)"
+    stroke-width="5"
+    opacity="0.45"
   />
 
-  <!-- Subtle Internal Geometric Grid Lines -->
-  <path
-    d="M 96 256 H 416 M 256 96 V 416"
-    stroke="rgba(255, 255, 255, 0.05)"
-    stroke-width="3"
-    stroke-dasharray="12 18"
-  />
+  <!-- 5. --- 3D FORGED 'F' MONOGRAM RIBBONS --- -->
 
-  <!-- --- 3D FORGED 'F' MONOGRAM RIBBONS --- -->
-
-  <!-- 1. Left Vertical Pillar (Anvil spine) -->
+  <!-- Left Anvil Spine -->
   <path
-    d="M 136 120 C 136 106.7 146.7 96 160 96 H 208 V 384 C 208 397.3 197.3 408 184 408 H 160 C 146.7 408 136 397.3 136 384 Z"
+    d="M 124 140 C 124 124 136 112 152 112 H 198 V 376 C 198 392 186 404 170 404 H 152 C 136 404 124 392 124 376 Z"
     fill="url(#pillarLeft)"
   />
 
-  <!-- 2. Top Horizontal Forging Arm (Angular Arrow / Prism Header) -->
+  <!-- Top Laser Origami Arm -->
   <path
-    d="M 184 96 H 368 C 381.3 96 389.9 109.2 384.5 121.4 L 358.4 180 C 354.8 188.2 346.7 193.4 337.8 193.4 H 184 V 96 Z"
+    d="M 186 112 H 360 C 375 112 386 126 380 140 L 350 206 C 345 216 335 222 324 222 H 186 V 112 Z"
     fill="url(#bladeTop)"
   />
 
-  <!-- 3. Top Specular Bevel Accent -->
+  <!-- Top Specular Chrome Bevel Light -->
   <path
-    d="M 192 104 H 364 L 350 136 H 192 Z"
-    fill="rgba(255, 255, 255, 0.35)"
+    d="M 194 120 H 356 L 340 152 H 194 Z"
+    fill="rgba(255, 255, 255, 0.45)"
   />
 
-  <!-- 4. Middle Forge Heat Ribbon (Glowing Magenta-Orange transformation bar) -->
+  <!-- Middle Forge Heat Plasma Bar -->
   <path
-    d="M 184 220 H 312 C 325.3 220 333.9 233.2 328.5 245.4 L 308.8 289.6 C 305.2 297.8 297.1 303 288.2 303 H 184 V 220 Z"
+    d="M 186 244 H 304 C 318 244 329 258 323 272 L 302 318 C 297 328 287 334 276 334 H 186 V 244 Z"
+    fill="url(#forgeHeat)"
+    filter="url(#softGlow)"
+  />
+  <path
+    d="M 186 244 H 304 C 318 244 329 258 323 272 L 302 318 C 297 328 287 334 276 334 H 186 V 244 Z"
     fill="url(#forgeHeat)"
   />
 
-  <!-- 5. Isometric Shadow Fold connecting Pillar & Ribbons -->
+  <!-- Isometric Shadow Fold -->
   <path
-    d="M 184 96 L 208 120 V 384 L 184 408 Z"
-    fill="url(#facetShadow)"
-    opacity="0.6"
+    d="M 186 112 L 198 126 V 376 L 186 404 Z"
+    fill="url(#creaseShadow)"
+    opacity="0.8"
   />
 
-  <!-- 6. Glowing Quantum Core Diamond Spark -->
-  <g filter="url(#logoSparkGlow)">
-    <polygon
-      points="368,96 392,128 368,160 344,128"
-      fill="#a5f3fc"
+  <!-- 6. HYPER-SPARK DIAMOND (Forge Core Nova) -->
+  <g filter="url(#intenseGlow)">
+    <!-- 4-point radiant star -->
+    <path
+      d="M 360 84 Q 360 112 388 112 Q 360 112 360 140 Q 360 112 332 112 Q 360 112 360 84 Z"
+      fill="#e0f2fe"
     />
-    <circle
-      cx="368"
-      cy="128"
-      r="10"
-      fill="#ffffff"
-    />
+    <circle cx="360" cy="112" r="6" fill="#ffffff" />
   </g>
 </svg>

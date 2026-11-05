@@ -1,5 +1,5 @@
 // FileForge Pro Service Worker - Offline-First PWA Cache
-const CACHE_NAME = 'fileforge-v7';
+const CACHE_NAME = 'fileforge-v8';
 
 const STATIC_PRECACHE = [
   '/',
