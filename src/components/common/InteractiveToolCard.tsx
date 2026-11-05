@@ -236,7 +236,11 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
               {onToggleFavorite && (
                 <button
                   type="button"
-                  onClick={(e) => onToggleFavorite(tool.slug, e)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleFavorite(tool.slug, e);
+                  }}
                   className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     isFavorite
                       ? 'text-amber-400 bg-amber-400/10'
