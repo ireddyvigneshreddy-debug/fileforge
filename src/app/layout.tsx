@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PWAProvider } from '@/components/common/PWARegistration';
+import { DeepSpaceBackground } from '@/components/common/DeepSpaceBackground';
 
 export const viewport: Viewport = {
-  themeColor: '#080c14',
+  themeColor: '#03050a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 };
 
 export const metadata: Metadata = {
-  title: 'FileForge Pro — Faster, Better & 100% Private File & PDF Tools',
+  title: 'FileForge Pro — Deep-Space Command Station for File & PDF Tools',
   description:
     'Free, in-browser file utility suite. Convert PPT to PDF, merge, split, compress, watermark, lock/unlock PDFs, resize images, extract ZIPs with zero server uploads.',
   manifest: '/manifest.webmanifest',
@@ -47,8 +48,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="FileForge" />
         <meta name="application-name" content="FileForge" />
       </head>
-      <body className="min-h-full flex flex-col bg-[#080c14] text-slate-100">
-        <PWAProvider>{children}</PWAProvider>
+      <body className="min-h-full flex flex-col bg-[#03050a] text-slate-100 selection:bg-cyan-500 selection:text-slate-950 font-sans relative overflow-x-hidden">
+        {/* Dynamic Multi-layered Deep-Space Canvas Starfield & Ambient Nebulae */}
+        <DeepSpaceBackground />
+
+        {/* Global PWA & Station Content */}
+        <PWAProvider>
+          <div className="relative z-10 flex-1 flex flex-col min-h-screen">
+            {children}
+          </div>
+        </PWAProvider>
       </body>
     </html>
   );

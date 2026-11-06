@@ -40,21 +40,21 @@ export default async function ToolPage({ params }: ToolPageProps) {
   const relatedTools = TOOLS.filter((t) => t.category === tool.category && t.id !== tool.id).slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-transparent text-slate-100 selection:bg-cyan-500 selection:text-slate-950">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-10">
+      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-10 relative z-10">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/" className="hover:text-slate-300 transition">
-            Home
+        <nav className="flex items-center gap-2 text-xs font-mono text-cyan-400/60">
+          <Link href="/" className="hover:text-cyan-300 transition">
+            [STATION_ROOT]
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
-          <Link href={`/#${tool.category}`} className="hover:text-slate-300 capitalize transition">
-            {tool.category}
+          <ChevronRight className="w-3.5 h-3.5 text-cyan-500/40" />
+          <Link href={`/#${tool.category}`} className="hover:text-cyan-300 uppercase transition">
+            [{tool.category}]
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
-          <span className="text-slate-300 font-medium">{tool.name}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-cyan-500/40" />
+          <span className="text-white font-bold">{tool.name}</span>
         </nav>
 
         {/* Master Tool Interactive Workspace */}
@@ -62,21 +62,21 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
         {/* Minimal Related Tools */}
         {relatedTools.length > 0 && (
-          <section className="space-y-3 pt-6 border-t border-white/5">
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              More {tool.category} tools
+          <section className="space-y-3 pt-6 border-t border-cyan-500/20 font-mono">
+            <h4 className="text-xs font-semibold text-cyan-400/80 uppercase tracking-widest">
+              [SECTOR_MODULES // RELATED_{tool.category.toUpperCase()}]
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {relatedTools.map((rel) => (
                 <Link
                   key={rel.slug}
                   href={`/tools/${rel.slug}`}
-                  className="glass-card p-3.5 rounded-xl flex items-center justify-between group text-xs"
+                  className="glass-card p-3.5 rounded-2xl border border-cyan-500/20 hover:border-cyan-400/60 shadow-[0_0_15px_-5px_rgba(0,240,255,0.15)] flex items-center justify-between group text-xs backdrop-blur-md"
                 >
-                  <span className="font-medium text-slate-300 group-hover:text-blue-400 transition truncate">
+                  <span className="font-semibold text-slate-200 group-hover:text-cyan-300 transition truncate">
                     {rel.name}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition shrink-0 ml-2" />
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition shrink-0 ml-2" />
                 </Link>
               ))}
             </div>

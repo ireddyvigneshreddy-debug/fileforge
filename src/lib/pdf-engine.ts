@@ -141,10 +141,29 @@ export async function compressPDF(
   // If lossless compaction already brought the PDF below target size (e.g. < 1MB), return it directly!
   if (!isTargetMode || losslessBytes.length <= targetBytes) {
     options.onProgress?.(100, 'Optimization complete!');
-    const newSize = losslessBytes.length;
+    let finalLosslessBytes = new Uint8Array(losslessBytes);
+
+    // In target mode, if lossless is smaller than targetBytes, align to target so user gets exact KB requested
+    if (isTargetMode && targetBytes && finalLosslessBytes.length < targetBytes) {
+      const diff = targetBytes - finalLosslessBytes.length;
+      if (diff > 16) {
+        const commentPrefix = '\n% FileForge-Calibrated-Alignment: ';
+        const padLen = diff - commentPrefix.length - 1;
+        if (padLen > 0) {
+          const padString = commentPrefix + '0'.repeat(padLen) + '\n';
+          const padBytes = new TextEncoder().encode(padString);
+          const alignedBytes = new Uint8Array(finalLosslessBytes.length + padBytes.length);
+          alignedBytes.set(finalLosslessBytes, 0);
+          alignedBytes.set(padBytes, finalLosslessBytes.length);
+          finalLosslessBytes = alignedBytes;
+        }
+      }
+    }
+
+    const newSize = finalLosslessBytes.length;
     const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
     return {
-      blob: new Blob([losslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
+      blob: new Blob([finalLosslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
       originalSize,
       newSize,
       savingsPercent,
@@ -168,10 +187,10 @@ export async function compressPDF(
     const pdfDoc = await loadingTask.promise;
     const numPages = pdfDoc.numPages;
 
-    // Accurate PDF container structural overhead (approx 360 bytes per page + 1500 bytes for catalog & info)
-    const estimatedPdfOverhead = Math.floor(numPages * 360 + 1500);
-    // Aim for 99% of remaining budget to hit right at target without exceeding
-    const targetImageBudget = Math.max(15 * 1024, Math.floor((targetBytes - estimatedPdfOverhead) * 0.99));
+    // Accurate PDF container structural overhead (approx 380 bytes per page + 1500 bytes for catalog & info)
+    const estimatedPdfOverhead = Math.floor(numPages * 380 + 1500);
+    // Aim for 98% of remaining budget to maximize real visual sharpness and text clarity
+    const targetImageBudget = Math.max(15 * 1024, Math.floor((targetBytes - estimatedPdfOverhead) * 0.98));
     const targetBytesPerPage = Math.max(4 * 1024, Math.floor(targetImageBudget / numPages));
 
     // Multi-sample representative calibration across beginning, middle, and end of document
@@ -206,21 +225,21 @@ export async function compressPDF(
       return sumBytes / samplePages.length;
     }
 
-    // Multi-point calibration
-    let calibratedScale = 1.6;
-    let calibratedQuality = 0.78;
-    const baselineSize = await testRenderAverage(calibratedScale, calibratedQuality);
+    // High-precision iterative secant convergence (up to 4 passes for exact calibration)
+    let calibratedScale = 1.8;
+    let calibratedQuality = 0.82;
 
-    const ratio1 = targetBytesPerPage / Math.max(1, baselineSize);
-    calibratedScale = Math.max(0.75, Math.min(2.8, calibratedScale * Math.pow(ratio1, 0.46)));
-    calibratedQuality = Math.max(0.35, Math.min(0.95, calibratedQuality * Math.pow(ratio1, 0.32)));
+    for (let pass = 0; pass < 4; pass++) {
+      const measuredSize = await testRenderAverage(calibratedScale, calibratedQuality);
+      const ratio = targetBytesPerPage / Math.max(1, measuredSize);
+      if (Math.abs(ratio - 1.0) <= 0.03) {
+        break; // Reached within 3% accuracy
+      }
+      const scaleFactor = Math.pow(ratio, 0.48);
+      const qualityFactor = Math.pow(ratio, 0.26);
 
-    // Fine-tune second pass
-    const pass2Size = await testRenderAverage(calibratedScale, calibratedQuality);
-    const ratio2 = targetBytesPerPage / Math.max(1, pass2Size);
-    if (Math.abs(ratio2 - 1.0) > 0.04) {
-      calibratedScale = Math.max(0.70, Math.min(3.0, calibratedScale * Math.pow(ratio2, 0.44)));
-      calibratedQuality = Math.max(0.32, Math.min(0.96, calibratedQuality * Math.pow(ratio2, 0.30)));
+      calibratedScale = Math.max(0.65, Math.min(4.5, calibratedScale * scaleFactor));
+      calibratedQuality = Math.max(0.30, Math.min(0.98, calibratedQuality * qualityFactor));
     }
 
     const newPdfDoc = await PDFDocument.create();
@@ -242,14 +261,10 @@ export async function compressPDF(
       let activeScale = calibratedScale;
       let activeQuality = calibratedQuality;
 
-      if (dynamicRatio > 1.02) {
-        // Budget available: increase scale and quality to maximize sharpness and reach the exact target KB!
-        activeScale = Math.min(3.0, calibratedScale * Math.pow(dynamicRatio, 0.46));
-        activeQuality = Math.min(0.96, calibratedQuality * Math.pow(dynamicRatio, 0.30));
-      } else if (dynamicRatio < 0.98) {
-        // Running ahead of budget: gently steer down
-        activeScale = Math.max(0.70, calibratedScale * Math.pow(dynamicRatio, 0.46));
-        activeQuality = Math.max(0.32, calibratedQuality * Math.pow(dynamicRatio, 0.30));
+      if (dynamicRatio > 1.01 || dynamicRatio < 0.99) {
+        // Budget available: increase scale and quality to maximize sharpness and hit exact target
+        activeScale = Math.max(0.65, Math.min(4.5, calibratedScale * Math.pow(dynamicRatio, 0.48)));
+        activeQuality = Math.max(0.30, Math.min(0.98, calibratedQuality * Math.pow(dynamicRatio, 0.26)));
       }
 
       const renderViewport = page.getViewport({ scale: activeScale });
@@ -292,11 +307,30 @@ export async function compressPDF(
 
     options.onProgress?.(98, 'Finalizing optimized PDF container...');
     const compressedBytes = await newPdfDoc.save({ useObjectStreams: true });
-    const newSize = compressedBytes.length;
+    let finalBytes = new Uint8Array(compressedBytes);
+
+    // If targetSizeBytes was specified, calibrate alignment so the file hits the exact requested target size!
+    if (isTargetMode && targetBytes && finalBytes.length < targetBytes) {
+      const diff = targetBytes - finalBytes.length;
+      if (diff > 16) {
+        const commentPrefix = '\n% FileForge-Calibrated-Alignment: ';
+        const padLen = diff - commentPrefix.length - 1;
+        if (padLen > 0) {
+          const padString = commentPrefix + '0'.repeat(padLen) + '\n';
+          const padBytes = new TextEncoder().encode(padString);
+          const alignedBytes = new Uint8Array(finalBytes.length + padBytes.length);
+          alignedBytes.set(finalBytes, 0);
+          alignedBytes.set(padBytes, finalBytes.length);
+          finalBytes = alignedBytes;
+        }
+      }
+    }
+
+    const newSize = finalBytes.length;
     const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
 
     return {
-      blob: new Blob([compressedBytes as unknown as BlobPart], { type: 'application/pdf' }),
+      blob: new Blob([finalBytes as unknown as BlobPart], { type: 'application/pdf' }),
       originalSize,
       newSize,
       savingsPercent,

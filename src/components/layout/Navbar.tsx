@@ -75,50 +75,50 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 glass-panel border-b border-white/10">
+      <header className="sticky top-0 z-50 glass-panel-hud border-b border-cyan-500/20 shadow-[0_4px_30px_-10px_rgba(0,240,255,0.15)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand Logo */}
+          {/* Brand Logo & Command Station Telemetry */}
           <Link href="/" className="flex items-center gap-3 group">
             <BrandLogo size={40} />
             <div>
-              <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+              <span className="text-xl font-mono font-bold tracking-tight text-white flex items-center gap-1.5 text-glow-cyan">
                 File<span className="gradient-text font-black">Forge</span>
-                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold ml-1">
-                  Pro
+                <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-semibold ml-1 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                  PRO
                 </span>
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2 font-mono text-xs">
             <Link
               href="/#pdf"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent transition flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4 text-rose-400" />
-              PDF Tools
+              <span>PDF_TOOLS</span>
             </Link>
             <Link
               href="/#image"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent transition flex items-center gap-1.5"
             >
               <ImageIcon className="w-4 h-4 text-emerald-400" />
-              Image Tools
+              <span>IMAGE_ARRAY</span>
             </Link>
             <Link
               href="/#document"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent transition flex items-center gap-1.5"
             >
               <FileSpreadsheet className="w-4 h-4 text-amber-400" />
-              Office & Docs
+              <span>OFFICE_DOCS</span>
             </Link>
             <Link
               href="/#utility"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent transition flex items-center gap-1.5"
             >
               <Layers className="w-4 h-4 text-purple-400" />
-              Utilities
+              <span>UTILITIES</span>
             </Link>
           </nav>
 
@@ -126,30 +126,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
           <div className="flex items-center gap-2 sm:gap-3">
             <PWAInstallButton />
 
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>100% Client-Side Privacy</span>
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 text-xs font-mono font-medium shadow-[0_0_12px_rgba(0,240,255,0.15)]">
+              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+              <span>CLIENT_ISOLATION // 100% PRIVATE</span>
             </div>
 
             {/* Universal Search Button */}
             <button
               type="button"
               onClick={handleOpenSearch}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 text-sm flex items-center gap-2 transition cursor-pointer shadow-sm hover:border-cyan-500/30"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-cyan-500/30 text-sm flex items-center gap-2 transition cursor-pointer shadow-[0_0_15px_-3px_rgba(0,240,255,0.15)] hover:border-cyan-400"
               title="Search tools (Press / or ⌘K)"
               aria-label="Search all tools"
             >
               <Search className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline text-xs text-slate-300 font-medium">Search 46 tools...</span>
-              <kbd className="hidden lg:inline text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
-                /
+              <span className="hidden sm:inline text-xs font-mono text-slate-300 font-medium">Search 46 tools...</span>
+              <kbd className="hidden lg:inline text-[10px] font-mono bg-slate-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                ⌘K
               </kbd>
             </button>
 
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition cursor-pointer"
+              className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 transition cursor-pointer"
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-cyan-400" />}
@@ -161,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
               className="md:hidden p-2 text-slate-400 hover:text-white cursor-pointer"
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-6 h-6 text-cyan-400" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>

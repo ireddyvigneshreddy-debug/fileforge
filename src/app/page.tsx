@@ -124,14 +124,9 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-blue-600 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-transparent text-slate-100 selection:bg-cyan-500 selection:text-slate-950 relative overflow-hidden">
       {/* Interactive Drag & Drop Anywhere Detector */}
       <GlobalDropDetector />
-
-      {/* Dynamic Animated Ambient Aura Lighting (Desktop only to prevent mobile GPU lag) */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] ambient-glow-1 pointer-events-none" />
-      <div className="hidden md:block absolute top-32 left-1/4 w-[600px] h-[400px] bg-gradient-to-tr from-cyan-600/10 via-indigo-600/10 to-transparent blur-3xl pointer-events-none animate-aurora" />
-      <div className="hidden md:block absolute top-64 right-1/4 w-[500px] h-[350px] bg-gradient-to-bl from-purple-600/10 via-blue-600/10 to-transparent blur-3xl pointer-events-none animate-pulse-subtle" />
 
       <Navbar onSearchClick={() => setIsQuickFindOpen(true)} />
 
@@ -139,27 +134,33 @@ export default function HomePage() {
       <QuickFindModal isOpen={isQuickFindOpen} onClose={() => setIsQuickFindOpen(false)} />
 
       <main className="flex-1 w-full space-y-12 py-10 relative z-10">
-        {/* HERO SECTION WITH INTERACTIVE SEARCH & CHIPS */}
+        {/* HERO SECTION WITH COMMAND STATION TELEMETRY & SEARCH */}
         <section className="max-w-4xl mx-auto px-4 text-center space-y-6 pt-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold shadow-inner shadow-blue-500/20 animate-float">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>100% In-Browser • Zero Cloud Uploads • Offline Ready</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-semibold shadow-[0_0_20px_rgba(0,240,255,0.2)] animate-float">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+            <span>ORBITAL_STATION // ZERO_CLOUD_UPLOADS // 100% PRIVATE</span>
           </div>
 
           <div className="space-y-3">
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight">
-              Every File Tool.{' '}
-              <span className="gradient-text">Instant &amp; Private.</span>
+            <h1 className="text-4xl sm:text-6xl font-black font-mono tracking-tight text-white leading-tight">
+              DEEP-SPACE COMMAND.{' '}
+              <span className="gradient-text text-glow-cyan">ZERO-CLOUD SUITE.</span>
             </h1>
-            <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto">
-              Fast, privacy-first utilities for PDF, image, camera scan, document &amp; file processing.
+            <p className="text-xs sm:text-sm font-mono text-slate-400 max-w-xl mx-auto leading-relaxed">
+              Client-side quantum array: convert, compress, scan, encrypt, and process 46 formats directly in your browser.
             </p>
           </div>
 
           {/* Interactive Live Search Bar with Instant Auto-Complete Dropdown */}
           <div className="max-w-xl mx-auto relative group">
-            <div className="flex items-center bg-slate-900/80 hover:bg-slate-900 focus-within:bg-slate-900 rounded-2xl border border-white/10 hover:border-blue-500/40 focus-within:border-cyan-400 px-4 py-3.5 shadow-2xl backdrop-blur-xl transition-all duration-300">
+            <div className="relative flex items-center bg-slate-950/80 hover:bg-slate-950 focus-within:bg-slate-950 rounded-2xl border border-cyan-500/30 hover:border-cyan-400 focus-within:border-cyan-400 px-4 py-3.5 shadow-[0_0_25px_-5px_rgba(0,240,255,0.2)] backdrop-blur-xl transition-all duration-300">
+              {/* Corner HUD Reticles */}
+              <div className="absolute top-1 left-1 w-2.5 h-2.5 border-t border-l border-cyan-400/50 pointer-events-none" />
+              <div className="absolute top-1 right-1 w-2.5 h-2.5 border-t border-r border-cyan-400/50 pointer-events-none" />
+              <div className="absolute bottom-1 left-1 w-2.5 h-2.5 border-b border-l border-cyan-400/50 pointer-events-none" />
+              <div className="absolute bottom-1 right-1 w-2.5 h-2.5 border-b border-r border-cyan-400/50 pointer-events-none" />
+
               <Search className="w-4 h-4 text-cyan-400 mr-3 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -172,7 +173,7 @@ export default function HomePage() {
                   setIsSearchFocused(true);
                 }}
                 placeholder="Search 46 tools (e.g. compress pdf, camera, word, qr)..."
-                className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+                className="w-full bg-transparent text-xs sm:text-sm font-mono text-slate-100 placeholder-slate-500 focus:outline-none"
               />
 
               {searchQuery ? (
@@ -189,10 +190,10 @@ export default function HomePage() {
                 </button>
               ) : (
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <kbd className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md border border-slate-700">
+                  <kbd className="text-[10px] font-mono bg-slate-900 text-cyan-400 px-2 py-0.5 rounded-md border border-cyan-500/40">
                     ⌘K
                   </kbd>
-                  <kbd className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-700">
+                  <kbd className="text-[10px] font-mono bg-slate-900 text-cyan-400 px-1.5 py-0.5 rounded-md border border-cyan-500/40">
                     /
                   </kbd>
                 </div>
@@ -201,30 +202,30 @@ export default function HomePage() {
 
             {/* Instant Live Search Auto-complete Flyout */}
             {isSearchFocused && searchQuery.trim() && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-slate-900/98 border border-cyan-500/30 rounded-2xl shadow-2xl backdrop-blur-2xl p-2 z-40 max-h-80 overflow-y-auto divide-y divide-white/5 animate-in fade-in duration-150 text-left">
-                <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 flex items-center justify-between">
-                  <span>Quick Suggestions ({filteredTools.length})</span>
-                  <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+              <div className="absolute left-0 right-0 top-full mt-2 bg-slate-950/98 border border-cyan-500/40 rounded-2xl shadow-[0_0_40px_rgba(0,240,255,0.3)] backdrop-blur-2xl p-2 z-40 max-h-80 overflow-y-auto divide-y divide-white/5 animate-in fade-in duration-150 text-left">
+                <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-cyan-400 flex items-center justify-between">
+                  <span>TELEMETRY SUGGESTIONS ({filteredTools.length})</span>
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    Offline Ready
+                    WASM_OFFLINE_READY
                   </span>
                 </div>
                 {filteredTools.slice(0, 5).map((tool) => (
                   <Link
                     key={tool.slug}
                     href={`/tools/${tool.slug}`}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 transition group cursor-pointer"
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-cyan-500/10 transition group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-cyan-400 shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
                         <IconRenderer name={tool.icon} className="w-4 h-4" />
                       </div>
                       <div className="truncate">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white group-hover:text-cyan-400 transition truncate">
+                          <span className="text-sm font-mono font-semibold text-white group-hover:text-cyan-300 transition truncate">
                             {tool.name}
                           </span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/5 text-slate-400 uppercase">
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 uppercase">
                             {tool.category}
                           </span>
                         </div>
@@ -238,9 +239,9 @@ export default function HomePage() {
             )}
 
             {/* Quick File Drop Hint */}
-            <div className="mt-2 text-xs text-slate-500 flex items-center justify-center gap-2">
+            <div className="mt-2 text-xs font-mono text-cyan-400/60 flex items-center justify-center gap-2">
               <UploadCloud className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Tip: Drag &amp; drop any file anywhere on the screen to auto-detect the best tool!</span>
+              <span>[DROP ANY PAYLOAD ANYWHERE ON SCREEN FOR INSTANT AUTODETECT]</span>
             </div>
           </div>
 
@@ -436,18 +437,18 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                {/* Interactive 3D Pill Tabs */}
+                {/* Interactive Tactical HUD Category Tabs */}
                 <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-2 scrollbar-none pt-1">
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 cursor-pointer ${
+                    className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition shrink-0 cursor-pointer ${
                       selectedCategory === 'all'
-                        ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
-                        : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'
+                        ? 'btn-3d bg-gradient-to-r from-cyan-400 to-blue-600 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+                        : 'btn-3d-slate bg-slate-950/80 border border-cyan-500/25 text-slate-300 hover:text-cyan-300 hover:border-cyan-400'
                     }`}
                   >
-                    All ({categoryCounts.all})
+                    [ALL_PROTOCOLS ({categoryCounts.all})]
                   </button>
 
                   {CATEGORIES.map((cat) => (
@@ -455,14 +456,14 @@ export default function HomePage() {
                       type="button"
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
                         selectedCategory === cat.id
-                          ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
-                          : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'
+                          ? 'btn-3d bg-gradient-to-r from-cyan-400 to-blue-600 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
+                          : 'btn-3d-slate bg-slate-950/80 border border-cyan-500/25 text-slate-300 hover:text-cyan-300 hover:border-cyan-400'
                       }`}
                     >
                       <IconRenderer name={cat.icon} className="w-3.5 h-3.5" />
-                      <span>{cat.label}</span>
+                      <span>[{cat.label.toUpperCase()}]</span>
                       <span className="text-[10px] opacity-75 font-normal">({categoryCounts[cat.id]})</span>
                     </button>
                   ))}
@@ -484,26 +485,32 @@ export default function HomePage() {
           </>
         )}
 
-        {/* INTERACTIVE STATS / PRIVACY BANNER */}
+        {/* ORBITAL STATION TELEMETRY STATS BANNER */}
         <section className="max-w-4xl mx-auto px-4 pt-4">
-          <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-white/10 flex flex-wrap items-center justify-around gap-4 text-center text-xs text-slate-400">
+          <div className="relative glass-panel-hud rounded-2xl p-4 sm:p-5 border border-cyan-500/30 flex flex-wrap items-center justify-around gap-4 text-center text-xs font-mono text-slate-400 shadow-[0_0_30px_-5px_rgba(0,240,255,0.15)]">
+            {/* Corner HUD Reticles */}
+            <div className="absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t border-l border-cyan-400 pointer-events-none" />
+            <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 border-t border-r border-cyan-400 pointer-events-none" />
+            <div className="absolute bottom-1.5 left-1.5 w-2.5 h-2.5 border-b border-l border-cyan-400 pointer-events-none" />
+            <div className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 border-b border-r border-cyan-400 pointer-events-none" />
+
             <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Zap className="w-4 h-4 text-blue-400" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+                <Zap className="w-4 h-4 text-cyan-400" />
               </div>
-              <span className="text-slate-300 font-medium">46 Client-Side Tools</span>
+              <span className="text-white font-bold tracking-wider">[46 CLIENT_WASM_ENGINES]</span>
             </div>
             <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
               </div>
-              <span className="text-slate-300 font-medium">0 KB Uploaded to Cloud</span>
+              <span className="text-white font-bold tracking-wider">[0_BYTES CLOUD_EGRESS]</span>
             </div>
             <div className="flex items-center gap-2 group cursor-default">
-              <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
                 <Sparkles className="w-4 h-4 text-purple-400" />
               </div>
-              <span className="text-slate-300 font-medium">100% Free &amp; Offline Ready</span>
+              <span className="text-white font-bold tracking-wider">[100% PRIVATE HARDWARE]</span>
             </div>
           </div>
         </section>

@@ -1015,25 +1015,38 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Tool Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-semibold uppercase tracking-wider">
-          <Zap className="w-3 h-3" />
-          <span>{tool.category}</span>
+      {/* Tool Header & Command Station Telemetry */}
+      <div className="text-center space-y-2.5">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono font-semibold uppercase tracking-widest shadow-[0_0_12px_rgba(0,240,255,0.2)]">
+          <Zap className="w-3.5 h-3.5 text-cyan-400" />
+          <span>[SECTOR_{tool.category.toUpperCase()} // MODULE: {tool.id.toUpperCase()}]</span>
           {tool.badge && (
-            <span className="bg-blue-600 text-white px-1.5 py-0.2 rounded-full text-[9px] ml-1">
+            <span className="bg-cyan-500 text-slate-950 px-2 py-0.5 rounded font-black text-[9px] ml-1">
               {tool.badge}
             </span>
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{tool.name}</h1>
-        <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">{tool.description}</p>
+        <h1 className="text-2xl sm:text-4xl font-mono font-black text-white tracking-tight text-glow-cyan">
+          {tool.name}
+        </h1>
+        <p className="text-xs sm:text-sm font-mono text-slate-400 max-w-lg mx-auto leading-relaxed">
+          {tool.description}
+        </p>
       </div>
 
       {/* Main Interactive Workstation */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl relative">
-        {/* State 1: In Progress */}
+      <div className="glass-panel-hud rounded-3xl p-6 sm:p-10 border border-cyan-500/25 shadow-[0_0_40px_-10px_rgba(0,240,255,0.18)] relative overflow-hidden backdrop-blur-2xl">
+        {/* Corner HUD Reticles */}
+        <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
+        <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
+        <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
+        <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
+
+        {/* Faint Tactical Radar Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(0,240,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+
+        {/* State 1: In Progress (Orbital Quantum Scanner) */}
         {status === 'processing' && <ProcessingState progress={progress} message={message} />}
 
         {/* State 2: Result Ready */}
@@ -2219,12 +2232,12 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                   type="button"
                   onClick={handleProcess}
                   disabled={tool.maxFiles > 0 && files.length === 0}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:via-indigo-500 hover:to-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2 transition hover:scale-[1.01] active:scale-[0.99]"
+                  className="btn-3d w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-600 to-indigo-600 hover:from-cyan-300 hover:via-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-mono font-black text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(0,240,255,0.35)] flex items-center justify-center gap-2 transition cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-cyan-200" />
+                  <Sparkles className="w-4 h-4 text-slate-950 animate-spin" />
                   <span>
                     {tool.actionLabel}
-                    {files.length > 1 ? ` (${files.length} Files • Batch)` : ''}
+                    {files.length > 1 ? ` (${files.length} ITEMS // BATCH_PIPELINE)` : ''}
                   </span>
                 </button>
               </div>
