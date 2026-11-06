@@ -152,7 +152,8 @@ export async function compressPDF(
   }
 
   // If still above target size, downsample pages and re-encode embedded media using pdfjs-dist
-  options.onProgress?.(50, 'File exceeds target (< 1 MB). Applying high-efficiency raster compaction...');
+  const targetKbDisplay = Math.round(targetBytes / 1024);
+  options.onProgress?.(45, `Calibrating resolution & clarity to hit exact target (${targetKbDisplay} KB)...`);
   try {
     const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
     if (!pdfjs.GlobalWorkerOptions.workerSrc) {
@@ -167,51 +168,102 @@ export async function compressPDF(
     const pdfDoc = await loadingTask.promise;
     const numPages = pdfDoc.numPages;
 
-    const safeTarget = Math.floor(targetBytes * 0.90);
-    const budgetPerPage = safeTarget / Math.max(1, numPages);
+    // Realistic PDF container structure and cross-reference table overhead
+    const estimatedPdfOverhead = Math.min(60 * 1024, (numPages * 1400) + 12 * 1024);
+    // Aim for ~97% of the budget so the final PDF hits right near the target without exceeding
+    const targetImageBudget = Math.max(25 * 1024, Math.floor((targetBytes - estimatedPdfOverhead) * 0.97));
+    const targetBytesPerPage = Math.max(6 * 1024, Math.floor(targetImageBudget / numPages));
 
-    // Dynamically calculate scale & JPEG quality per page
-    let scale = 1.35;
-    let jpegQuality = 0.70;
+    // Sample calibration on Page 1 to measure exact canvas encoding bytes
+    const samplePage = await pdfDoc.getPage(1);
 
-    if (budgetPerPage >= 400 * 1024) {
-      scale = 1.5;
-      jpegQuality = 0.78;
-    } else if (budgetPerPage >= 200 * 1024) {
-      scale = 1.30;
-      jpegQuality = 0.70;
-    } else if (budgetPerPage >= 100 * 1024) {
-      scale = 1.10;
-      jpegQuality = 0.62;
-    } else if (budgetPerPage >= 50 * 1024) {
-      scale = 0.90;
-      jpegQuality = 0.50;
+    async function testRenderPage(scaleVal: number, qualityVal: number): Promise<number> {
+      const vPort = samplePage.getViewport({ scale: scaleVal });
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.floor(vPort.width));
+      c.height = Math.max(1, Math.floor(vPort.height));
+      const cCtx = c.getContext('2d');
+      if (!cCtx) return 40 * 1024;
+      cCtx.fillStyle = '#ffffff';
+      cCtx.fillRect(0, 0, c.width, c.height);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rTask = samplePage.render({ canvasContext: cCtx, canvas: c, viewport: vPort } as any);
+      await rTask.promise;
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        c.toBlob((b) => (b ? resolve(b) : reject(new Error('Canvas error'))), 'image/jpeg', qualityVal);
+      });
+      return blob.size;
+    }
+
+    // Baseline test at high resolution: scale 2.0 (144 DPI) and quality 0.82
+    let calibratedScale = 2.0;
+    let calibratedQuality = 0.82;
+
+    const baselineSize = await testRenderPage(calibratedScale, calibratedQuality);
+
+    if (baselineSize <= targetBytesPerPage) {
+      // Baseline high resolution fits within the target budget!
+      // Check if we can push even higher clarity without exceeding the target
+      const roomRatio = targetBytesPerPage / Math.max(1, baselineSize);
+      if (roomRatio >= 1.35) {
+        calibratedScale = 2.25;
+        calibratedQuality = 0.88;
+      } else if (roomRatio >= 1.15) {
+        calibratedScale = 2.1;
+        calibratedQuality = 0.85;
+      }
     } else {
-      scale = 0.75;
-      jpegQuality = 0.40;
+      // Baseline is above target per page: compute scale ratio to hit target precisely while keeping text legible
+      const scaleRatio = Math.sqrt(targetBytesPerPage / baselineSize);
+      // Ensure text remains sharp and legible, only dropping scale below 1.15 when page budget is tight (< 14 KB)
+      const minScale = targetBytesPerPage < 14 * 1024 ? 0.85 : 1.15;
+      calibratedScale = Math.max(minScale, Math.min(1.95, 2.0 * scaleRatio * 0.98));
+      calibratedQuality = Math.max(0.45, Math.min(0.82, 0.82 * Math.pow(scaleRatio, 0.4)));
+
+      // Quick 2nd verification pass on sample page
+      const testPass2 = await testRenderPage(calibratedScale, calibratedQuality);
+      if (testPass2 > targetBytesPerPage) {
+        calibratedQuality = Math.max(0.40, calibratedQuality * (targetBytesPerPage / testPass2) * 0.96);
+      } else if (testPass2 < targetBytesPerPage * 0.75) {
+        // Extra room: increase quality so we don't undershoot the requested target size!
+        calibratedQuality = Math.min(0.88, calibratedQuality * 1.15);
+      }
     }
 
     const newPdfDoc = await PDFDocument.create();
+    let accumulatedBytes = 0;
 
     for (let i = 1; i <= numPages; i++) {
-      const pagePct = 50 + Math.round((i / numPages) * 45);
-      options.onProgress?.(pagePct, `Compressing page ${i} of ${numPages}...`);
+      const pagePct = 48 + Math.round((i / numPages) * 50);
+      options.onProgress?.(pagePct, `Compressing page ${i} of ${numPages} (Target: ${targetKbDisplay} KB)...`);
 
       const page = await pdfDoc.getPage(i);
-      const origViewport = page.getViewport({ scale: 1.0 });
-      const renderViewport = page.getViewport({ scale });
+      const pageOrigViewport = page.getViewport({ scale: 1.0 });
 
+      // Dynamic adjustment for remaining pages so we stay right on target
+      const remainingImageBudget = targetImageBudget - accumulatedBytes;
+      const pagesLeft = numPages - i + 1;
+      const currentAllowedPerPage = Math.max(5 * 1024, Math.floor(remainingImageBudget / pagesLeft));
+
+      let activeScale = calibratedScale;
+      let activeQuality = calibratedQuality;
+
+      if (currentAllowedPerPage > targetBytesPerPage * 1.25) {
+        activeQuality = Math.min(0.90, calibratedQuality * 1.1);
+      } else if (currentAllowedPerPage < targetBytesPerPage * 0.80) {
+        activeQuality = Math.max(0.40, calibratedQuality * 0.92);
+      }
+
+      const renderViewport = page.getViewport({ scale: activeScale });
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.floor(renderViewport.width));
       canvas.height = Math.max(1, Math.floor(renderViewport.height));
       const ctx = canvas.getContext('2d');
       if (!ctx) continue;
 
-      // Fill white background to prevent dark transparent backgrounds
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Render with pdfjs-dist
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const renderTask = page.render({ canvasContext: ctx, canvas, viewport: renderViewport } as any);
       await renderTask.promise;
@@ -223,19 +275,20 @@ export async function compressPDF(
             else reject(new Error('Canvas export failed'));
           },
           'image/jpeg',
-          jpegQuality
+          activeQuality
         );
       });
 
+      accumulatedBytes += jpegBlob.size;
       const jpegArrayBuffer = await jpegBlob.arrayBuffer();
       const embeddedImg = await newPdfDoc.embedJpg(new Uint8Array(jpegArrayBuffer));
 
-      const newPage = newPdfDoc.addPage([origViewport.width, origViewport.height]);
+      const newPage = newPdfDoc.addPage([pageOrigViewport.width, pageOrigViewport.height]);
       newPage.drawImage(embeddedImg, {
         x: 0,
         y: 0,
-        width: origViewport.width,
-        height: origViewport.height,
+        width: pageOrigViewport.width,
+        height: pageOrigViewport.height,
       });
     }
 

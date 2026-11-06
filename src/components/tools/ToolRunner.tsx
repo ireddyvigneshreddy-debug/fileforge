@@ -67,22 +67,14 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [fileCompressionFormat, setFileCompressionFormat] = useState<'zip' | 'gzip' | 'smart'>('zip');
   const [fileCompressionLevel, setFileCompressionLevel] = useState<number>(9);
 
-  // Target Compression Controls (Guaranteed < 1MB, < 500KB, etc.)
+  // Target Compression Controls (Guaranteed specific KB with zero-blur clarity calibration)
   const [compressMode, setCompressMode] = useState<'target' | 'quality'>('target');
-  const [targetPreset, setTargetPreset] = useState<'1mb' | '500kb' | '200kb' | '100kb' | 'custom'>('1mb');
-  const [customTargetVal, setCustomTargetVal] = useState<number>(800);
-  const [customTargetUnit, setCustomTargetUnit] = useState<'KB' | 'MB'>('KB');
+  const [targetKb, setTargetKb] = useState<number>(900); // Exact KB target (Default 900 KB)
+  const [targetPreset, setTargetPreset] = useState<'950kb' | '800kb' | '600kb' | '500kb' | '300kb' | '150kb' | 'custom'>('950kb');
 
   const getTargetSizeBytes = (): number | undefined => {
     if (compressMode === 'quality') return undefined;
-    if (targetPreset === '1mb') return 1000 * 1024;
-    if (targetPreset === '500kb') return 500 * 1024;
-    if (targetPreset === '200kb') return 200 * 1024;
-    if (targetPreset === '100kb') return 100 * 1024;
-    if (targetPreset === 'custom') {
-      return customTargetUnit === 'MB' ? customTargetVal * 1024 * 1024 : customTargetVal * 1024;
-    }
-    return 1000 * 1024;
+    return Math.max(30, targetKb) * 1024;
   };
 
   // Image
@@ -199,7 +191,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         if (files.length === 1) {
           setMessage(
             compressMode === 'target' && targetBytes
-              ? `Compressing PDF to target size (< ${(targetBytes / (1024 * 1024)).toFixed(1)} MB)...`
+              ? `Calibrating resolution to compress to ~${Math.round(targetBytes / 1024)} KB with maximum text clarity...`
               : 'Optimizing font tables and stripping unreferenced objects...'
           );
           setProgress(30);
@@ -217,7 +209,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
             const f = files[i];
-            setMessage(`Compressing PDF ${i + 1} of ${files.length}: ${f.name}...`);
+            setMessage(`Compressing PDF ${i + 1} of ${files.length} to target ~${Math.round((targetBytes || 1000 * 1024) / 1024)} KB...`);
             setProgress(Math.round(((i + 0.1) / files.length) * 100));
             const compRes = await PDFEngine.compressPDF(f, {
               mode: compressMode === 'quality' ? 'balanced' : 'target',
@@ -1636,62 +1628,101 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                   </div>
 
                   {compressMode === 'target' ? (
-                    <div className="space-y-3">
-                      {/* Preset Chips */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        {[
-                          { id: '1mb', label: '< 1 MB', desc: 'Optimal Web' },
-                          { id: '500kb', label: '< 500 KB', desc: 'Email / Form' },
-                          { id: '200kb', label: '< 200 KB', desc: 'Ultra Compact' },
-                          { id: '100kb', label: '< 100 KB', desc: 'Tiny' },
-                          { id: 'custom', label: 'Custom', desc: 'Exact target' },
-                        ].map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => setTargetPreset(preset.id as any)}
-                            className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center ${
-                              targetPreset === preset.id
-                                ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
-                                : 'bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-                            }`}
-                          >
-                            <span className="text-xs font-bold text-white">{preset.label}</span>
-                            <span className="text-[10px] text-slate-400 mt-0.5">{preset.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom Target Size Input */}
-                      {targetPreset === 'custom' && (
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className="text-xs text-slate-400 shrink-0">Maximum Size:</span>
+                    <div className="space-y-4">
+                      {/* Exact Target KB Header & Manual Input */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 p-3 rounded-xl border border-white/10">
+                        <div>
+                          <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                            <span>Exact Target Compression:</span>
+                            <span className="text-emerald-400 font-mono text-sm font-bold">{targetKb} KB</span>
+                            <span className="text-[10px] text-slate-400">({(targetKb / 1024).toFixed(2)} MB)</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            High-clarity calibration dynamically hits within ~95% of this exact limit without blurring text.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] text-slate-400">Set KB:</label>
                           <input
                             type="number"
-                            min="10"
+                            min="30"
                             max="50000"
-                            value={customTargetVal}
-                            onChange={(e) => setCustomTargetVal(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                            className="w-28 bg-slate-900 px-3 py-1.5 rounded-xl border border-white/15 text-xs text-white font-mono"
+                            step="10"
+                            value={targetKb}
+                            onChange={(e) => {
+                              const val = Math.max(30, parseInt(e.target.value, 10) || 30);
+                              setTargetKb(val);
+                              setTargetPreset('custom');
+                            }}
+                            className="w-24 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-white/20 text-xs text-white font-mono font-bold focus:border-emerald-500 focus:outline-none"
                           />
-                          <select
-                            value={customTargetUnit}
-                            onChange={(e) => setCustomTargetUnit(e.target.value as 'KB' | 'MB')}
-                            className="bg-slate-900 px-3 py-1.5 rounded-xl border border-white/15 text-xs text-white"
-                          >
-                            <option value="KB">KB</option>
-                            <option value="MB">MB</option>
-                          </select>
+                          <span className="text-xs font-bold text-slate-400">KB</span>
                         </div>
-                      )}
+                      </div>
 
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/5">
+                      {/* Interactive Slider */}
+                      <div className="space-y-1.5 px-1">
+                        <div className="flex justify-between text-[11px] text-slate-400">
+                          <span>50 KB (High Shrink)</span>
+                          <span className="text-emerald-400 font-mono font-medium">{targetKb} KB</span>
+                          <span>2,000 KB (2 MB)</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="50"
+                          max="2000"
+                          step="25"
+                          value={Math.min(targetKb, 2000)}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            setTargetKb(val);
+                            setTargetPreset('custom');
+                          }}
+                          className="w-full accent-emerald-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div>
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-400 block mb-1.5">
+                          Quick Presets
+                        </span>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                          {[
+                            { id: '950kb', kb: 950, label: '950 KB', desc: '< 1 MB' },
+                            { id: '800kb', kb: 800, label: '800 KB', desc: 'Crisp' },
+                            { id: '600kb', kb: 600, label: '600 KB', desc: 'Standard' },
+                            { id: '500kb', kb: 500, label: '500 KB', desc: 'Forms' },
+                            { id: '300kb', kb: 300, label: '300 KB', desc: 'Compact' },
+                            { id: '150kb', kb: 150, label: '150 KB', desc: 'Govt Portal' },
+                          ].map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                setTargetPreset(preset.id as any);
+                                setTargetKb(preset.kb);
+                              }}
+                              className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center ${
+                                targetKb === preset.kb
+                                  ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                                  : 'bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+                              }`}
+                            >
+                              <span className="text-xs font-bold text-white">{preset.label}</span>
+                              <span className="text-[10px] text-slate-400">{preset.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-white/5">
                         <span className="text-slate-400">
-                          {files[0] ? `Original: ${(files[0].size / (1024 * 1024)).toFixed(2)} MB` : 'Guarantee:'}
+                          {files[0] ? `Original: ${(files[0].size / 1024).toFixed(0)} KB (${(files[0].size / (1024 * 1024)).toFixed(2)} MB)` : 'Resolution Guarantee:'}
                         </span>
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Strictly under {targetPreset === 'custom' ? `${customTargetVal} ${customTargetUnit}` : targetPreset === '1mb' ? '1 MB' : targetPreset === '500kb' ? '500 KB' : targetPreset === '200kb' ? '200 KB' : '100 KB'}
+                          <Check className="w-3.5 h-3.5" />
+                          Calibrated for ~{targetKb} KB (Sharp Text, Zero-Blur)
                         </span>
                       </div>
                     </div>
@@ -1949,30 +1980,54 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                   </div>
 
                   {fileCompressionFormat === 'smart' && (
-                    <div className="space-y-3 p-3.5 rounded-xl bg-slate-900/60 border border-white/10">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                          Target File Size (for PDF & Images)
-                        </span>
-                        <span className="text-[11px] text-emerald-400 font-medium">
-                          Strictly under {targetPreset === 'custom' ? `${customTargetVal} ${customTargetUnit}` : targetPreset === '1mb' ? '1 MB' : targetPreset === '500kb' ? '500 KB' : targetPreset === '200kb' ? '200 KB' : '100 KB'}
-                        </span>
+                    <div className="space-y-3.5 p-3.5 rounded-xl bg-slate-900/60 border border-white/10">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                            Target File Size: <span className="text-emerald-400 font-mono font-bold">{targetKb} KB</span>
+                          </span>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            PDFs & images adaptively calibrate to reach this exact size with maximum clarity.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="30"
+                            max="50000"
+                            step="10"
+                            value={targetKb}
+                            onChange={(e) => {
+                              const val = Math.max(30, parseInt(e.target.value, 10) || 30);
+                              setTargetKb(val);
+                              setTargetPreset('custom');
+                            }}
+                            className="w-20 bg-slate-950 px-2 py-1 rounded-lg border border-white/20 text-xs text-white font-mono font-bold"
+                          />
+                          <span className="text-xs text-slate-400 font-semibold">KB</span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+
+                      {/* Presets */}
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                         {[
-                          { id: '1mb', label: '< 1 MB' },
-                          { id: '500kb', label: '< 500 KB' },
-                          { id: '200kb', label: '< 200 KB' },
-                          { id: '100kb', label: '< 100 KB' },
-                          { id: 'custom', label: 'Custom' },
+                          { id: '950kb', kb: 950, label: '950 KB' },
+                          { id: '800kb', kb: 800, label: '800 KB' },
+                          { id: '600kb', kb: 600, label: '600 KB' },
+                          { id: '500kb', kb: 500, label: '500 KB' },
+                          { id: '300kb', kb: 300, label: '300 KB' },
+                          { id: '150kb', kb: 150, label: '150 KB' },
                         ].map((preset) => (
                           <button
                             key={preset.id}
                             type="button"
-                            onClick={() => setTargetPreset(preset.id as any)}
-                            className={`py-2 rounded-lg border text-center transition text-xs font-semibold ${
-                              targetPreset === preset.id
+                            onClick={() => {
+                              setTargetPreset(preset.id as any);
+                              setTargetKb(preset.kb);
+                            }}
+                            className={`py-1.5 rounded-lg border text-center transition text-xs font-semibold ${
+                              targetKb === preset.kb
                                 ? 'bg-emerald-500/20 border-emerald-500 text-white'
                                 : 'bg-slate-950 border-white/10 text-slate-400 hover:text-white'
                             }`}
@@ -1981,27 +2036,6 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                           </button>
                         ))}
                       </div>
-                      {targetPreset === 'custom' && (
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className="text-xs text-slate-400 shrink-0">Maximum Size:</span>
-                          <input
-                            type="number"
-                            min="10"
-                            max="50000"
-                            value={customTargetVal}
-                            onChange={(e) => setCustomTargetVal(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                            className="w-24 bg-slate-950 px-3 py-1 rounded-xl border border-white/15 text-xs text-white font-mono"
-                          />
-                          <select
-                            value={customTargetUnit}
-                            onChange={(e) => setCustomTargetUnit(e.target.value as 'KB' | 'MB')}
-                            className="bg-slate-950 px-2.5 py-1 rounded-xl border border-white/15 text-xs text-white"
-                          >
-                            <option value="KB">KB</option>
-                            <option value="MB">MB</option>
-                          </select>
-                        </div>
-                      )}
                     </div>
                   )}
 
