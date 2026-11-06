@@ -90,20 +90,14 @@ export const QuickFindModal: React.FC<QuickFindModalProps> = ({ isOpen, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-3 sm:px-4 bg-slate-950/85 backdrop-blur-xl animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-3 sm:px-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
       {/* Backdrop click */}
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Modal Container with HUD Glassmorphism */}
-      <div className="relative w-full max-w-2xl bg-slate-950/90 border border-cyan-500/30 rounded-3xl shadow-[0_0_50px_rgba(0,240,255,0.2)] overflow-hidden z-10 flex flex-col max-h-[85vh] backdrop-blur-2xl">
-        {/* Corner HUD Reticles */}
-        <div className="absolute top-2.5 left-2.5 w-3 h-3 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
-        <div className="absolute top-2.5 right-2.5 w-3 h-3 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
-        <div className="absolute bottom-2.5 left-2.5 w-3 h-3 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
-        <div className="absolute bottom-2.5 right-2.5 w-3 h-3 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
-
+      {/* Modal Container */}
+      <div className="relative w-full max-w-2xl bg-slate-900 border border-white/15 rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[85vh]">
         {/* Top Search Input */}
-        <div className="flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b border-cyan-500/20 gap-3 bg-slate-950/90">
+        <div className="flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b border-white/10 gap-3 bg-slate-900/90">
           <Search className="w-5 h-5 text-cyan-400 shrink-0" />
           <input
             ref={inputRef}
