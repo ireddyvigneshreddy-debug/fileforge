@@ -70,7 +70,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   // Target Compression Controls (Guaranteed specific KB with zero-blur clarity calibration)
   const [compressMode, setCompressMode] = useState<'target' | 'quality'>('target');
   const [targetKb, setTargetKb] = useState<number>(900); // Exact KB target (Default 900 KB)
-  const [targetPreset, setTargetPreset] = useState<'950kb' | '800kb' | '600kb' | '500kb' | '300kb' | '150kb' | 'custom'>('950kb');
+  const [targetPreset, setTargetPreset] = useState<'950kb' | '900kb' | '800kb' | '600kb' | '500kb' | '300kb' | '150kb' | 'custom'>('900kb');
 
   const getTargetSizeBytes = (): number | undefined => {
     if (compressMode === 'quality') return undefined;
@@ -1671,7 +1671,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                           type="range"
                           min="50"
                           max="2000"
-                          step="25"
+                          step="5"
                           value={Math.min(targetKb, 2000)}
                           onChange={(e) => {
                             const val = parseInt(e.target.value, 10);
@@ -1687,9 +1687,10 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                         <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-400 block mb-1.5">
                           Quick Presets
                         </span>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
                           {[
                             { id: '950kb', kb: 950, label: '950 KB', desc: '< 1 MB' },
+                            { id: '900kb', kb: 900, label: '900 KB', desc: 'Exact' },
                             { id: '800kb', kb: 800, label: '800 KB', desc: 'Crisp' },
                             { id: '600kb', kb: 600, label: '600 KB', desc: 'Standard' },
                             { id: '500kb', kb: 500, label: '500 KB', desc: 'Forms' },
@@ -2010,9 +2011,10 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                       </div>
 
                       {/* Presets */}
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
                         {[
                           { id: '950kb', kb: 950, label: '950 KB' },
+                          { id: '900kb', kb: 900, label: '900 KB' },
                           { id: '800kb', kb: 800, label: '800 KB' },
                           { id: '600kb', kb: 600, label: '600 KB' },
                           { id: '500kb', kb: 500, label: '500 KB' },
