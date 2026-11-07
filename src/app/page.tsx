@@ -93,6 +93,7 @@ export default function HomePage() {
   const categoryCounts = useMemo(() => {
     return {
       all: TOOLS.length,
+      ai: TOOLS.filter((t) => t.category === 'ai').length,
       pdf: TOOLS.filter((t) => t.category === 'pdf').length,
       image: TOOLS.filter((t) => t.category === 'image').length,
       document: TOOLS.filter((t) => t.category === 'document').length,
@@ -109,14 +110,14 @@ export default function HomePage() {
 
   const popularTools = useMemo(() => {
     const popularSlugs = [
+      'ai-document-chat',
+      'batch-pipeline',
+      'ocr-extract-text',
       'scan-to-pdf',
       'compress-pdf',
       'word-to-pdf',
       'merge-pdf',
       'compress-image',
-      'images-to-pdf',
-      'ppt-to-pdf',
-      'lock-pdf',
     ];
     return popularSlugs
       .map((slug) => TOOLS.find((t) => t.slug === slug))
@@ -248,14 +249,14 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
             <span className="text-slate-500 text-[11px] font-medium mr-1">Trending:</span>
             {[
+              { name: '🤖 AI Document Q&A', slug: 'ai-document-chat' },
+              { name: '🔄 Batch Pipeline', slug: 'batch-pipeline' },
+              { name: '👁️ OCR Scanner', slug: 'ocr-extract-text' },
               { name: '📷 Camera Scan', slug: 'scan-to-pdf' },
               { name: 'Compress PDF', slug: 'compress-pdf' },
               { name: 'Merge PDF', slug: 'merge-pdf' },
-              { name: 'Compress Image', slug: 'compress-image' },
               { name: 'Word to PDF', slug: 'word-to-pdf' },
-              { name: 'PPT to PDF', slug: 'ppt-to-pdf' },
               { name: 'Lock PDF', slug: 'lock-pdf' },
-              { name: 'QR Code', slug: 'qr-code-studio' },
             ].map((p) => (
               <Link
                 key={p.slug}

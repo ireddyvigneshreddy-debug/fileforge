@@ -93,29 +93,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 lg:gap-2">
             <Link
+              href="/#ai"
+              className="px-2.5 py-1.5 rounded-lg text-xs lg:text-sm text-cyan-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 font-semibold"
+            >
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              AI &amp; OCR
+            </Link>
+            <Link
               href="/#pdf"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-lg text-xs lg:text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4 text-rose-400" />
               PDF Tools
             </Link>
             <Link
               href="/#image"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-lg text-xs lg:text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
             >
               <ImageIcon className="w-4 h-4 text-emerald-400" />
               Image Tools
             </Link>
             <Link
               href="/#document"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-lg text-xs lg:text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
             >
               <FileSpreadsheet className="w-4 h-4 text-amber-400" />
-              Office & Docs
+              Office &amp; Docs
             </Link>
             <Link
               href="/#utility"
-              className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-lg text-xs lg:text-sm text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
             >
               <Layers className="w-4 h-4 text-purple-400" />
               Utilities

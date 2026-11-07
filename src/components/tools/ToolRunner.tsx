@@ -12,6 +12,9 @@ import * as ImageEngine from '@/lib/image-engine';
 import * as DocEngine from '@/lib/document-engine';
 import * as ArchiveEngine from '@/lib/archive-engine';
 import * as CryptoEngine from '@/lib/crypto-engine';
+import { AIDocumentChatPanel } from '@/components/ai/AIDocumentChatPanel';
+import { ClientSideOCRScanner } from '@/components/ocr/ClientSideOCRScanner';
+import { BatchPipelineStudio } from '@/components/pipeline/BatchPipelineStudio';
 
 import {
   Sparkles,
@@ -33,6 +36,16 @@ interface ToolRunnerProps {
 }
 
 export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
+  if (tool.id === 'ai-document-chat') {
+    return <AIDocumentChatPanel />;
+  }
+  if (tool.id === 'ocr-extract-text') {
+    return <ClientSideOCRScanner />;
+  }
+  if (tool.id === 'batch-pipeline') {
+    return <BatchPipelineStudio />;
+  }
+
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<'idle' | 'processing' | 'done' | 'error'>('idle');
   const [progress, setProgress] = useState(0);

@@ -21,6 +21,12 @@ export const CATEGORIES: { id: ToolCategory; label: string; icon: string; descri
     description: 'PPT, Word, Excel, CSV, JSON & Markdown.',
   },
   {
+    id: 'ai',
+    label: 'AI & Pipelines',
+    icon: 'Sparkles',
+    description: 'AI document chat, summarizer, OCR scanner & batch pipelines.',
+  },
+  {
     id: 'utility',
     label: 'Security & Files',
     icon: 'ShieldCheck',
@@ -626,6 +632,56 @@ export const TOOLS: ToolDefinition[] = [
     actionLabel: 'Compare Diff',
     keywords: ['diff', 'compare text', 'text difference'],
     features: ['Side-by-side view', 'Line-by-line highlight', 'Fast diffing'],
+  },
+
+  // ================= AI, OCR & PIPELINES =================
+  {
+    id: 'ai-document-chat',
+    slug: 'ai-document-chat',
+    name: 'AI Document Summarizer & Q&A',
+    category: 'ai',
+    description: 'Chat directly with your uploaded PDF, Word doc, or spreadsheet to summarize and extract insights.',
+    longDescription:
+      'Client-side intelligent document analysis: extract key bullet insights, summarize chapters, ask specific questions, and query your files in real time.',
+    icon: 'Sparkles',
+    badge: 'AI Powered',
+    accept: ['.pdf', '.docx', '.xlsx', '.csv', '.txt', '.md', 'application/pdf'],
+    maxFiles: 1,
+    actionLabel: 'Analyze & Chat with Document',
+    keywords: ['ai', 'chat with pdf', 'summarize', 'document q&a', 'pdf summary', 'gpt', 'llm', 'extract insights'],
+    features: ['Instant executive summary', 'Interactive Q&A chat', '100% in-browser privacy', 'Key takeaways extraction'],
+  },
+  {
+    id: 'ocr-extract-text',
+    slug: 'ocr-extract-text',
+    name: 'Client-Side OCR Text Extractor',
+    category: 'ai',
+    description: 'Extract selectable text and searchable layers from scanned PDFs, receipts, and photos.',
+    longDescription:
+      'Extract text from scanned PDFs, photos, and images directly in your browser using high-accuracy Tesseract.js WebAssembly OCR.',
+    icon: 'Scan',
+    badge: 'WASM OCR',
+    accept: ['image/*', '.png', '.jpg', '.jpeg', '.webp', '.pdf', 'application/pdf'],
+    maxFiles: 10,
+    actionLabel: 'Run Optical Character Recognition',
+    keywords: ['ocr', 'text extraction', 'scan text', 'image to text', 'tesseract', 'searchable pdf', 'photo to text'],
+    features: ['Tesseract.js WASM engine', 'Confidence score indicator', '1-click copy text', 'Export to .txt'],
+  },
+  {
+    id: 'batch-pipeline',
+    slug: 'batch-pipeline',
+    name: 'Batch Pipeline Studio',
+    category: 'ai',
+    description: 'Drag & drop mixed files into custom sequential pipelines (e.g. Compress -> Watermark -> Convert to ZIP).',
+    longDescription:
+      'Construct multi-stage file processing pipelines with drag-and-drop ease. Execute sequential transformations across batches and download as a single structured ZIP archive.',
+    icon: 'Layers',
+    badge: 'Pipelines',
+    accept: ['*/*', '.pdf', 'image/*', '.docx', '.xlsx', '.csv', '.txt'],
+    maxFiles: 50,
+    actionLabel: 'Execute Sequential Pipeline',
+    keywords: ['pipeline', 'batch', 'sequential', 'bulk', 'workflow', 'automate', 'zip batch'],
+    features: ['Multi-stage sequential steps', 'Batch folder ingestion', 'Structured ZIP packaging', 'Zero server uploads'],
   },
 ];
 

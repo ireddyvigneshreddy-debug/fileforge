@@ -1,4 +1,4 @@
-export type ToolCategory = 'pdf' | 'image' | 'document' | 'utility';
+export type ToolCategory = 'pdf' | 'image' | 'document' | 'utility' | 'ai';
 
 export interface ToolDefinition {
   id: string;
@@ -8,7 +8,7 @@ export interface ToolDefinition {
   description: string;
   longDescription: string;
   icon: string; // Lucide icon name
-  badge?: string; // e.g. "Popular", "New", "100% Private"
+  badge?: string; // e.g. "Popular", "New", "100% Private", "AI Powered"
   accept: string[]; // MIME types or extensions (e.g. ['.pdf', 'application/pdf'])
   maxFiles: number; // 1 for single file, >1 for multiple files
   actionLabel: string;

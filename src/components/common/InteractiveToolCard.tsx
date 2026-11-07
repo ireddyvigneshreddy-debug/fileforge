@@ -98,6 +98,22 @@ export const InteractiveToolCard: React.FC<InteractiveToolCardProps> = ({
           accent: 'rgba(139, 92, 246, 0.25)',
           glow: 'rgba(139, 92, 246, 0.4)',
         };
+      case 'ai':
+        return {
+          color: 'text-cyan-400',
+          bg: 'bg-cyan-500/10',
+          border: 'border-cyan-500/25',
+          accent: 'rgba(6, 182, 212, 0.25)',
+          glow: 'rgba(6, 182, 212, 0.4)',
+        };
+      default:
+        return {
+          color: 'text-blue-400',
+          bg: 'bg-blue-500/10',
+          border: 'border-blue-500/25',
+          accent: 'rgba(59, 130, 246, 0.25)',
+          glow: 'rgba(59, 130, 246, 0.4)',
+        };
     }
   };
 

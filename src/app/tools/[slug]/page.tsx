@@ -6,6 +6,7 @@ import { TOOLS, getToolBySlug } from '@/lib/tools-registry';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ToolRunner } from '@/components/tools/ToolRunner';
+import { DualPaneWorkspace } from '@/components/workspace/DualPaneWorkspace';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 
 interface ToolPageProps {
@@ -43,46 +44,52 @@ export default async function ToolPage({ params }: ToolPageProps) {
     <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-10">
+      <div className="flex-1 w-full flex flex-col">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/" className="hover:text-slate-300 transition">
-            Home
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
-          <Link href={`/#${tool.category}`} className="hover:text-slate-300 capitalize transition">
-            {tool.category}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
-          <span className="text-slate-300 font-medium">{tool.name}</span>
-        </nav>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-2 w-full">
+          <nav className="flex items-center gap-2 text-xs text-slate-500">
+            <Link href="/" className="hover:text-slate-300 transition">
+              Home
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
+            <Link href={`/#${tool.category}`} className="hover:text-slate-300 capitalize transition">
+              {tool.category}
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
+            <span className="text-slate-300 font-medium">{tool.name}</span>
+          </nav>
+        </div>
 
-        {/* Master Tool Interactive Workspace */}
-        <ToolRunner tool={tool} />
+        {/* Dual-Pane Dashboard Workspace */}
+        <DualPaneWorkspace activeTool={tool}>
+          <div className="space-y-10">
+            <ToolRunner tool={tool} />
 
-        {/* Minimal Related Tools */}
-        {relatedTools.length > 0 && (
-          <section className="space-y-3 pt-6 border-t border-white/5">
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              More {tool.category} tools
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {relatedTools.map((rel) => (
-                <Link
-                  key={rel.slug}
-                  href={`/tools/${rel.slug}`}
-                  className="glass-card p-3.5 rounded-xl flex items-center justify-between group text-xs"
-                >
-                  <span className="font-medium text-slate-300 group-hover:text-blue-400 transition truncate">
-                    {rel.name}
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition shrink-0 ml-2" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
+            {/* Related Tools */}
+            {relatedTools.length > 0 && (
+              <section className="space-y-3 pt-6 border-t border-white/5">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  More {tool.category} tools
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {relatedTools.map((rel) => (
+                    <Link
+                      key={rel.slug}
+                      href={`/tools/${rel.slug}`}
+                      className="glass-card p-3.5 rounded-xl flex items-center justify-between group text-xs"
+                    >
+                      <span className="font-medium text-slate-300 group-hover:text-blue-400 transition truncate">
+                        {rel.name}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition shrink-0 ml-2" />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </DualPaneWorkspace>
+      </div>
 
       <Footer />
     </div>
