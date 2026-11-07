@@ -127,7 +127,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-blue-600 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-transparent text-slate-100 selection:bg-blue-600 selection:text-white relative overflow-hidden">
       {/* Interactive Drag & Drop Anywhere Detector */}
       <GlobalDropDetector />
 

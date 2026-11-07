@@ -48,7 +48,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="FileForge" />
         <meta name="application-name" content="FileForge" />
       </head>
-      <body className="min-h-full flex flex-col bg-[#080c14] text-slate-100 relative">
+      <body className="min-h-full flex flex-col bg-[#050811] text-slate-100 relative">
         <RealisticGalaxyBackground />
         <PWAProvider>{children}</PWAProvider>
       </body>

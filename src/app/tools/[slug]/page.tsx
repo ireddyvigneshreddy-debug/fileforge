@@ -42,7 +42,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
   const relatedTools = TOOLS.filter((t) => t.category === tool.category && t.id !== tool.id).slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-transparent text-slate-100">
       <Navbar />
 
       <div className="flex-1 w-full flex flex-col">
