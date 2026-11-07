@@ -7,6 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ToolRunner } from '@/components/tools/ToolRunner';
 import { DualPaneWorkspace } from '@/components/workspace/DualPaneWorkspace';
+import { FeedbackReportBlock } from '@/components/common/FeedbackReportBlock';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 
 interface ToolPageProps {
@@ -64,6 +65,9 @@ export default async function ToolPage({ params }: ToolPageProps) {
         <DualPaneWorkspace activeTool={tool}>
           <div className="space-y-10">
             <ToolRunner tool={tool} />
+
+            {/* Direct Feedback & Bug Reporting Block */}
+            <FeedbackReportBlock toolName={tool.name} toolSlug={tool.slug} />
 
             {/* Related Tools */}
             {relatedTools.length > 0 && (

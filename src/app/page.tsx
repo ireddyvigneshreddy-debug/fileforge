@@ -8,6 +8,7 @@ import { QuickFindModal } from '@/components/common/QuickFindModal';
 import { InteractiveToolCard } from '@/components/common/InteractiveToolCard';
 import { Hero3DStage } from '@/components/common/Hero3DStage';
 import { HeroLiveDropzoneCard } from '@/components/common/HeroLiveDropzoneCard';
+import { FeedbackReportBlock } from '@/components/common/FeedbackReportBlock';
 import { GlobalDropDetector } from '@/components/common/GlobalDropDetector';
 import { IconRenderer } from '@/components/common/IconRenderer';
 import { TOOLS, CATEGORIES, ToolCategory, ToolDefinition } from '@/lib/tools-registry';
@@ -495,7 +496,7 @@ export default function HomePage() {
               <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Zap className="w-4 h-4 text-blue-400" />
               </div>
-              <span className="text-slate-300 font-medium">46 Client-Side Tools</span>
+              <span className="text-slate-300 font-medium">{TOOLS.length} Client-Side Tools</span>
             </div>
             <div className="flex items-center gap-2 group cursor-default">
               <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -510,6 +511,11 @@ export default function HomePage() {
               <span className="text-slate-300 font-medium">100% Free &amp; Offline Ready</span>
             </div>
           </div>
+        </section>
+
+        {/* FEEDBACK & ERROR REPORTING BLOCK */}
+        <section className="max-w-4xl mx-auto px-4 pt-6">
+          <FeedbackReportBlock />
         </section>
       </main>
 

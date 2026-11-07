@@ -14,10 +14,13 @@ import {
   X,
   Sun,
   Moon,
+  Bug,
+  Mail,
 } from 'lucide-react';
 import { CATEGORIES } from '@/lib/tools-registry';
 import { PWAInstallButton } from '@/components/common/PWARegistration';
 import { QuickFindModal } from '@/components/common/QuickFindModal';
+import { FeedbackModal } from '@/components/common/FeedbackModal';
 import { BrandLogo } from '@/components/common/BrandLogo';
 
 interface NavbarProps {
@@ -27,6 +30,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [internalSearchOpen, setInternalSearchOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
   const handleOpenSearch = () => {
@@ -147,10 +151,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
               aria-label="Search all tools"
             >
               <Search className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline text-xs text-slate-300 font-medium">Search 46 tools...</span>
+              <span className="hidden sm:inline text-xs text-slate-300 font-medium">Search 51 tools...</span>
               <kbd className="hidden lg:inline text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
                 /
               </kbd>
+            </button>
+
+            {/* Direct Feedback / Report Issue Button */}
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-500/25 text-xs font-semibold transition cursor-pointer"
+              title="Report an error or request a fix"
+            >
+              <Bug className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Report Issue</span>
             </button>
 
             {/* Theme Toggle Button */}
@@ -186,10 +201,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600/15 border border-cyan-500/30 text-cyan-300 font-semibold text-sm hover:bg-blue-600/25 transition cursor-pointer"
             >
               <Search className="w-4 h-4 text-cyan-400" />
-              <span>Search all 46 tools...</span>
+              <span>Search all 51 tools...</span>
               <span className="ml-auto text-[10px] text-emerald-400 font-normal bg-emerald-500/10 px-2 py-0.5 rounded">
                 Offline Ready
               </span>
+            </button>
+
+            {/* Mobile Feedback & Fix Request Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setFeedbackOpen(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 font-semibold text-sm hover:bg-cyan-500/20 transition cursor-pointer"
+            >
+              <Bug className="w-4 h-4 text-cyan-400" />
+              <span>Report an Issue or Request Fix</span>
             </button>
 
             <div className="space-y-1">
@@ -220,6 +248,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
           onClose={() => setInternalSearchOpen(false)}
         />
       )}
+
+      {/* Universal Feedback & Issue Reporting Modal */}
+      <FeedbackModal
+        isOpen={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+      />
     </>
   );
 };

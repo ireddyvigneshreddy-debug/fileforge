@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Download, CheckCircle2, RotateCcw, ArrowRight, Eye } from 'lucide-react';
+import { Download, CheckCircle2, RotateCcw, ArrowRight, Eye, Mail } from 'lucide-react';
 import { ProcessedResult } from '@/types/tools';
 
 interface ResultDownloadProps {
@@ -102,6 +102,22 @@ export const ResultDownload: React.FC<ResultDownloadProps> = ({ result, onReset 
           <RotateCcw className="w-4 h-4 text-slate-400" />
           <span>Process Another</span>
         </button>
+      </div>
+
+      {/* Direct Feedback & Fix Request Link */}
+      <div className="pt-2 text-center">
+        <a
+          href={`mailto:ireddyvigneshreddy@gmail.com?subject=${encodeURIComponent(
+            `[FileForge Result Feedback] Report on ${result.fileName}`
+          )}&body=${encodeURIComponent(
+            `Hello Vignesh,\n\nI processed "${result.fileName}" on FileForge Pro.\n- Original Size: ${formatSize(result.originalSize)}\n- Result Size: ${formatSize(result.newSize)}\n\nIssue / Feedback:\n(Describe if anything was blurry, unexpected size, or not working as expected...)\n`
+          )}`}
+          className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-cyan-400 transition"
+        >
+          <Mail className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Something not looking right? Report an issue directly to developer (ireddyvigneshreddy@gmail.com)</span>
+          <ArrowRight className="w-3 h-3 text-slate-500" />
+        </a>
       </div>
 
       {/* Additional Files (e.g. for batch processing or split ZIP) */}

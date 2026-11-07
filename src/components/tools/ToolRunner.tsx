@@ -15,6 +15,7 @@ import * as CryptoEngine from '@/lib/crypto-engine';
 import { AIDocumentChatPanel } from '@/components/ai/AIDocumentChatPanel';
 import { ClientSideOCRScanner } from '@/components/ocr/ClientSideOCRScanner';
 import { BatchPipelineStudio } from '@/components/pipeline/BatchPipelineStudio';
+import { FeedbackReportBlock } from '@/components/common/FeedbackReportBlock';
 
 import {
   Sparkles,
@@ -1171,11 +1172,23 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         {/* State 3: Interactive Configuration & Upload */}
         {status !== 'processing' && status !== 'done' && (
           <div className="space-y-8">
-            {/* Error banner */}
+            {/* Error banner with Direct Feedback & Fix Request */}
             {error && (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs sm:text-sm flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span>{error}</span>
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs sm:text-sm flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-rose-300">Processing Error Occurred</p>
+                    <p className="text-xs text-rose-400/90 leading-relaxed">{error}</p>
+                  </div>
+                </div>
+
+                <FeedbackReportBlock
+                  toolName={tool.name}
+                  toolSlug={tool.slug}
+                  initialError={error}
+                  compact
+                />
               </div>
             )}
 
