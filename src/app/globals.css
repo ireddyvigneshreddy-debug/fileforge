@@ -351,3 +351,8 @@ body {
   animation: screen-illuminator-glow 3s ease-in-out infinite;
 }
 
+/* Subtle Realistic Cosmic Vignette */
+.bg-radial-vignette {
+  background: radial-gradient(circle at 50% 45%, transparent 40%, rgba(8, 12, 20, 0.6) 80%, rgba(8, 12, 20, 0.95) 100%);
+}
+

@@ -174,7 +174,7 @@ export default function HomePage() {
                   setSearchQuery(e.target.value);
                   setIsSearchFocused(true);
                 }}
-                placeholder="Search 46 tools (e.g. compress pdf, camera, word, qr)..."
+                placeholder="Search 51 tools (e.g. compress pdf, camera, word, qr)..."
                 className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
               />
 
