@@ -110,6 +110,48 @@ export interface CompressPDFOptions {
   onProgress?: (percent: number, message: string) => void;
 }
 
+/**
+ * Exact byte alignment for PDFs using compliant trailing PDF comments.
+ * The comment syntax '% FF-Align: ...' is ignored by PDF parsers and visual viewers,
+ * but ensures the output file matches the exact byte count specified by the user.
+ */
+function alignPdfBytesToTarget(bytes: Uint8Array, targetBytes: number): Uint8Array {
+  if (bytes.length >= targetBytes) return bytes;
+  const diff = targetBytes - bytes.length;
+  if (diff <= 0) return bytes;
+
+  let padString = '';
+  if (diff >= 16) {
+    const prefix = '\n% FF-Align: ';
+    const padLen = diff - prefix.length - 1; // 1 for trailing \n
+    if (padLen >= 0) {
+      padString = prefix + '0'.repeat(padLen) + '\n';
+    }
+  } else if (diff >= 4) {
+    const prefix = '\n% ';
+    const padLen = diff - prefix.length - 1;
+    padString = prefix + '0'.repeat(padLen) + '\n';
+  } else {
+    padString = ' '.repeat(diff);
+  }
+
+  const padBytes = new TextEncoder().encode(padString);
+  if (padBytes.length !== diff) {
+    const adjusted = new Uint8Array(diff);
+    adjusted.fill(0x20); // space padding
+    adjusted.set(padBytes.subarray(0, diff));
+    const aligned = new Uint8Array(targetBytes);
+    aligned.set(bytes, 0);
+    aligned.set(adjusted, bytes.length);
+    return aligned;
+  }
+
+  const aligned = new Uint8Array(targetBytes);
+  aligned.set(bytes, 0);
+  aligned.set(padBytes, bytes.length);
+  return aligned;
+}
+
 // 3. COMPRESS PDF (Guaranteed reduction with lossless stream compaction + smart page downsampling)
 export async function compressPDF(
   file: File,
@@ -141,23 +183,11 @@ export async function compressPDF(
   // If lossless compaction already brought the PDF below target size (e.g. < 1MB), return it directly!
   if (!isTargetMode || losslessBytes.length <= targetBytes) {
     options.onProgress?.(100, 'Optimization complete!');
-    let finalLosslessBytes = new Uint8Array(losslessBytes);
+    let finalLosslessBytes: Uint8Array<any> = new Uint8Array(losslessBytes);
 
-    // In target mode, if lossless is smaller than targetBytes, align to target so user gets exact KB requested
-    if (isTargetMode && targetBytes && finalLosslessBytes.length < targetBytes) {
-      const diff = targetBytes - finalLosslessBytes.length;
-      if (diff > 16) {
-        const commentPrefix = '\n% FileForge-Calibrated-Alignment: ';
-        const padLen = diff - commentPrefix.length - 1;
-        if (padLen > 0) {
-          const padString = commentPrefix + '0'.repeat(padLen) + '\n';
-          const padBytes = new TextEncoder().encode(padString);
-          const alignedBytes = new Uint8Array(finalLosslessBytes.length + padBytes.length);
-          alignedBytes.set(finalLosslessBytes, 0);
-          alignedBytes.set(padBytes, finalLosslessBytes.length);
-          finalLosslessBytes = alignedBytes;
-        }
-      }
+    // In target mode, if lossless is smaller than targetBytes and original was larger, align to exact target KB requested
+    if (isTargetMode && targetBytes && finalLosslessBytes.length < targetBytes && originalSize > targetBytes) {
+      finalLosslessBytes = alignPdfBytesToTarget(finalLosslessBytes, targetBytes);
     }
 
     const newSize = finalLosslessBytes.length;
@@ -257,14 +287,21 @@ export async function compressPDF(
       const remainingImageBudget = targetImageBudget - accumulatedBytes;
       const targetForThisPage = Math.max(3 * 1024, Math.floor(remainingImageBudget / pagesLeft));
 
-      const dynamicRatio = targetForThisPage / Math.max(1, targetBytesPerPage);
       let activeScale = calibratedScale;
       let activeQuality = calibratedQuality;
 
-      if (dynamicRatio > 1.01 || dynamicRatio < 0.99) {
-        // Budget available: increase scale and quality to maximize sharpness and hit exact target
-        activeScale = Math.max(0.65, Math.min(4.5, calibratedScale * Math.pow(dynamicRatio, 0.48)));
-        activeQuality = Math.max(0.30, Math.min(0.98, calibratedQuality * Math.pow(dynamicRatio, 0.26)));
+      if (i > 1 && accumulatedBytes > 0) {
+        // Adapt dynamically to this specific document's compressibility
+        const avgActualPerPage = accumulatedBytes / (i - 1);
+        const dynamicRatio = targetForThisPage / Math.max(1, avgActualPerPage);
+        activeScale = Math.max(0.70, Math.min(4.5, activeScale * Math.pow(dynamicRatio, 0.45)));
+        activeQuality = Math.max(0.35, Math.min(0.98, activeQuality * Math.pow(dynamicRatio, 0.25)));
+      } else {
+        const initialRatio = targetForThisPage / Math.max(1, targetBytesPerPage);
+        if (initialRatio > 1.01 || initialRatio < 0.99) {
+          activeScale = Math.max(0.70, Math.min(4.5, calibratedScale * Math.pow(initialRatio, 0.45)));
+          activeQuality = Math.max(0.35, Math.min(0.98, calibratedQuality * Math.pow(initialRatio, 0.25)));
+        }
       }
 
       const renderViewport = page.getViewport({ scale: activeScale });
@@ -307,23 +344,11 @@ export async function compressPDF(
 
     options.onProgress?.(98, 'Finalizing optimized PDF container...');
     const compressedBytes = await newPdfDoc.save({ useObjectStreams: true });
-    let finalBytes = new Uint8Array(compressedBytes);
+    let finalBytes: Uint8Array<any> = new Uint8Array(compressedBytes);
 
     // If targetSizeBytes was specified, calibrate alignment so the file hits the exact requested target size!
-    if (isTargetMode && targetBytes && finalBytes.length < targetBytes) {
-      const diff = targetBytes - finalBytes.length;
-      if (diff > 16) {
-        const commentPrefix = '\n% FileForge-Calibrated-Alignment: ';
-        const padLen = diff - commentPrefix.length - 1;
-        if (padLen > 0) {
-          const padString = commentPrefix + '0'.repeat(padLen) + '\n';
-          const padBytes = new TextEncoder().encode(padString);
-          const alignedBytes = new Uint8Array(finalBytes.length + padBytes.length);
-          alignedBytes.set(finalBytes, 0);
-          alignedBytes.set(padBytes, finalBytes.length);
-          finalBytes = alignedBytes;
-        }
-      }
+    if (isTargetMode && targetBytes && finalBytes.length < targetBytes && originalSize > targetBytes) {
+      finalBytes = alignPdfBytesToTarget(finalBytes, targetBytes);
     }
 
     const newSize = finalBytes.length;

@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer';
 import { QuickFindModal } from '@/components/common/QuickFindModal';
 import { InteractiveToolCard } from '@/components/common/InteractiveToolCard';
 import { Hero3DStage } from '@/components/common/Hero3DStage';
+import { HeroLiveDropzoneCard } from '@/components/common/HeroLiveDropzoneCard';
 import { GlobalDropDetector } from '@/components/common/GlobalDropDetector';
 import { IconRenderer } from '@/components/common/IconRenderer';
 import { TOOLS, CATEGORIES, ToolCategory, ToolDefinition } from '@/lib/tools-registry';
@@ -267,6 +268,11 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
+
+          {/* Interactive Live-Dropzone Preview Card */}
+          <div className="pt-2">
+            <HeroLiveDropzoneCard />
+          </div>
         </section>
 
         {/* DEDICATED LIVE SEARCH RESULTS (Shown immediately when searching) */}
@@ -422,27 +428,24 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* ALL TOOLS CATALOG WITH INTERACTIVE TABS */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-3">
-                <div>
+            {/* ALL TOOLS CATALOG WITH STICKY INTERACTIVE TABS */}
+            <section id="catalog" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pt-2">
+              <div className="sticky top-16 z-30 bg-[#080c14]/90 backdrop-blur-xl py-3 px-4 sm:px-6 rounded-2xl border border-white/10 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                    <span>All Tools</span>
+                    <span>Tool Catalog</span>
                     <span className="text-xs text-slate-400 font-normal">
-                      ({filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'} shown)
+                      ({filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'})
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Browse our complete suite of {TOOLS.length} private client-side utilities
-                  </p>
                 </div>
 
                 {/* Interactive 3D Pill Tabs */}
-                <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-2 scrollbar-none pt-1">
+                <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-1 scrollbar-none">
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 cursor-pointer ${
                       selectedCategory === 'all'
                         ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
                         : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'
@@ -456,7 +459,7 @@ export default function HomePage() {
                       type="button"
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
                         selectedCategory === cat.id
                           ? 'btn-3d bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
                           : 'btn-3d-slate bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white hover:border-white/20'

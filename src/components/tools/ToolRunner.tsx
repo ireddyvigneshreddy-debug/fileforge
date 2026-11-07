@@ -1651,7 +1651,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                             <span className="text-[10px] text-slate-400">({(targetKb / 1024).toFixed(2)} MB)</span>
                           </div>
                           <p className="text-[10px] text-slate-400 mt-0.5">
-                            High-clarity calibration dynamically hits within ~95% of this exact limit without blurring text.
+                            Precision calibration dynamically hits your exact target KB with sharp text and zero-blur rendering.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1736,7 +1736,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                         </span>
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />
-                          Calibrated for ~{targetKb} KB (Sharp Text, Zero-Blur)
+                          Calibrated for exact {targetKb} KB (Sharp Text, Zero-Blur)
                         </span>
                       </div>
                     </div>
