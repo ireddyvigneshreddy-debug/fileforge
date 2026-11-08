@@ -112,7 +112,7 @@ export default function HomePage() {
 
   const popularTools = useMemo(() => {
     const popularSlugs = [
-      'ai-document-chat',
+      'reorder-pdf',
       'batch-pipeline',
       'ocr-extract-text',
       'scan-to-pdf',
@@ -251,7 +251,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
             <span className="text-slate-500 text-[11px] font-medium mr-1">Trending:</span>
             {[
-              { name: '🤖 AI Document Q&A', slug: 'ai-document-chat' },
+              { name: '📑 Reorder & Replace Pages', slug: 'reorder-pdf' },
               { name: '🔄 Batch Pipeline', slug: 'batch-pipeline' },
               { name: '👁️ OCR Scanner', slug: 'ocr-extract-text' },
               { name: '📷 Camera Scan', slug: 'scan-to-pdf' },

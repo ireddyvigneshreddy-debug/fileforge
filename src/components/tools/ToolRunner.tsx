@@ -12,7 +12,6 @@ import * as ImageEngine from '@/lib/image-engine';
 import * as DocEngine from '@/lib/document-engine';
 import * as ArchiveEngine from '@/lib/archive-engine';
 import * as CryptoEngine from '@/lib/crypto-engine';
-import { AIDocumentChatPanel } from '@/components/ai/AIDocumentChatPanel';
 import { ClientSideOCRScanner } from '@/components/ocr/ClientSideOCRScanner';
 import { BatchPipelineStudio } from '@/components/pipeline/BatchPipelineStudio';
 import { FeedbackReportBlock } from '@/components/common/FeedbackReportBlock';
@@ -38,9 +37,6 @@ interface ToolRunnerProps {
 }
 
 export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
-  if (tool.id === 'ai-document-chat') {
-    return <AIDocumentChatPanel />;
-  }
   if (tool.id === 'ocr-extract-text') {
     return <ClientSideOCRScanner />;
   }

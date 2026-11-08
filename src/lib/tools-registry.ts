@@ -22,9 +22,9 @@ export const CATEGORIES: { id: ToolCategory; label: string; icon: string; descri
   },
   {
     id: 'ai',
-    label: 'AI & Pipelines',
+    label: 'OCR & Pipelines',
     icon: 'Sparkles',
-    description: 'AI document chat, summarizer, OCR scanner & batch pipelines.',
+    description: 'Client-side OCR scanner & multi-step batch pipelines.',
   },
   {
     id: 'utility',
@@ -634,23 +634,7 @@ export const TOOLS: ToolDefinition[] = [
     features: ['Side-by-side view', 'Line-by-line highlight', 'Fast diffing'],
   },
 
-  // ================= AI, OCR & PIPELINES =================
-  {
-    id: 'ai-document-chat',
-    slug: 'ai-document-chat',
-    name: 'AI Document Summarizer & Q&A',
-    category: 'ai',
-    description: 'Chat directly with your uploaded PDF, Word doc, or spreadsheet to summarize and extract insights.',
-    longDescription:
-      'Client-side intelligent document analysis: extract key bullet insights, summarize chapters, ask specific questions, and query your files in real time.',
-    icon: 'Sparkles',
-    badge: 'AI Powered',
-    accept: ['.pdf', '.docx', '.xlsx', '.csv', '.txt', '.md', 'application/pdf'],
-    maxFiles: 1,
-    actionLabel: 'Analyze & Chat with Document',
-    keywords: ['ai', 'chat with pdf', 'summarize', 'document q&a', 'pdf summary', 'gpt', 'llm', 'extract insights'],
-    features: ['Instant executive summary', 'Interactive Q&A chat', '100% in-browser privacy', 'Key takeaways extraction'],
-  },
+  // ================= OCR & PIPELINES =================
   {
     id: 'ocr-extract-text',
     slug: 'ocr-extract-text',

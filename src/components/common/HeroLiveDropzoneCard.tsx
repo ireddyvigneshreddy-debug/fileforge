@@ -69,11 +69,11 @@ export const HeroLiveDropzoneCard: React.FC = () => {
           color: 'from-blue-500 to-cyan-400',
         },
         {
-          name: 'AI Document Chat',
-          slug: 'ai-document-chat',
-          desc: 'Summarize key insights & chat directly with text',
-          icon: 'Sparkles',
-          badge: 'AI Powered',
+          name: 'Reorder / Organize PDF',
+          slug: 'reorder-pdf',
+          desc: 'Visual drag & drop pages or replace with device images',
+          icon: 'LayoutGrid',
+          badge: 'Interactive',
           color: 'from-cyan-400 to-blue-600',
         },
         {
@@ -133,11 +133,11 @@ export const HeroLiveDropzoneCard: React.FC = () => {
     if (/\.(xlsx?|csv)$/i.test(name)) {
       return [
         {
-          name: 'AI Document Chat',
-          slug: 'ai-document-chat',
-          desc: 'Analyze spreadsheet columns & extract summaries',
-          icon: 'Sparkles',
-          badge: 'AI Q&A',
+          name: 'Excel to PDF',
+          slug: 'excel-to-pdf',
+          desc: 'Render spreadsheet tables into formatted PDF',
+          icon: 'FileText',
+          badge: 'Formatted',
           color: 'from-cyan-400 to-blue-600',
         },
         {
@@ -168,11 +168,11 @@ export const HeroLiveDropzoneCard: React.FC = () => {
     if (/\.(docx?|txt|md|json)$/i.test(name)) {
       return [
         {
-          name: 'AI Document Chat',
-          slug: 'ai-document-chat',
-          desc: 'Ask questions, summarize chapters & extract insights',
-          icon: 'Sparkles',
-          badge: 'AI Powered',
+          name: 'OCR Text Extractor',
+          slug: 'ocr-extract-text',
+          desc: 'Extract clean selectable text and searchable layers',
+          icon: 'Scan',
+          badge: 'Extract',
           color: 'from-cyan-400 to-blue-600',
         },
         {

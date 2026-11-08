@@ -24,7 +24,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { TOOLS, CATEGORIES, ToolDefinition, ToolCategory } from '@/lib/tools-registry';
-import { AIDocumentChatPanel } from '@/components/ai/AIDocumentChatPanel';
 import { BatchPipelineStudio } from '@/components/pipeline/BatchPipelineStudio';
 import { ClientSideOCRScanner } from '@/components/ocr/ClientSideOCRScanner';
 import { AutoPurgeSecurityModal } from '@/components/security/AutoPurgeSecurityModal';
@@ -43,16 +42,14 @@ export const DualPaneWorkspace: React.FC<DualPaneWorkspaceProps> = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sidebarFilter, setSidebarFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ToolCategory | 'all'>('all');
-  const [activeTab, setActiveTab] = useState<'tools' | 'ai' | 'pipeline' | 'ocr'>('tools');
+  const [activeTab, setActiveTab] = useState<'tools' | 'pipeline' | 'ocr'>('tools');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [purgeTimerMinutes, setPurgeTimerMinutes] = useState(60);
 
   // Auto-switch tab if current URL is one of the flagship studio tools
   useEffect(() => {
-    if (pathname.includes('ai-document-chat')) {
-      setActiveTab('ai');
-    } else if (pathname.includes('batch-pipeline')) {
+    if (pathname.includes('batch-pipeline')) {
       setActiveTab('pipeline');
     } else if (pathname.includes('ocr-extract-text')) {
       setActiveTab('ocr');
@@ -281,20 +278,6 @@ export const DualPaneWorkspace: React.FC<DualPaneWorkspaceProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('ai')}
-            className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'ai'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-cyan-300" />
-            <span>AI Document Summarizer &amp; Q&amp;A</span>
-            <span className="bg-cyan-500 text-slate-950 px-1.5 py-0.2 rounded font-black text-[9px]">AI</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('pipeline')}
             className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'pipeline'
@@ -325,12 +308,6 @@ export const DualPaneWorkspace: React.FC<DualPaneWorkspaceProps> = ({
           {activeTab === 'tools' && (
             <div className="w-full transition-opacity duration-200">
               {children}
-            </div>
-          )}
-
-          {activeTab === 'ai' && (
-            <div className="w-full transition-opacity duration-200">
-              <AIDocumentChatPanel />
             </div>
           )}
 

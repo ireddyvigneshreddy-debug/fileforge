@@ -4,8 +4,8 @@ import React from 'react';
 import { Sparkles, Layers, Scan, ShieldCheck, Wrench } from 'lucide-react';
 
 interface MobileBottomNavProps {
-  activeTab: 'tools' | 'ai' | 'pipeline' | 'ocr';
-  onTabChange: (tab: 'tools' | 'ai' | 'pipeline' | 'ocr') => void;
+  activeTab: 'tools' | 'pipeline' | 'ocr';
+  onTabChange: (tab: 'tools' | 'pipeline' | 'ocr') => void;
   onOpenSecurity: () => void;
 }
 
@@ -19,7 +19,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       aria-label="Mobile Navigation"
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/90 backdrop-blur-xl border-t border-white/10 px-2 py-1.5 shadow-[0_-8px_20px_rgba(0,0,0,0.5)]"
     >
-      <div className="grid grid-cols-5 items-center justify-around max-w-md mx-auto text-[10px] font-medium text-slate-400">
+      <div className="grid grid-cols-4 items-center justify-around max-w-md mx-auto text-[10px] font-medium text-slate-400">
         {/* 1. Tools */}
         <button
           type="button"
@@ -32,19 +32,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span>Tools</span>
         </button>
 
-        {/* 2. AI Chat & Summarizer */}
-        <button
-          type="button"
-          onClick={() => onTabChange('ai')}
-          className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition ${
-            activeTab === 'ai' ? 'text-cyan-400 font-bold bg-cyan-500/10' : 'hover:text-white'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 mb-0.5 text-cyan-400" />
-          <span>AI Chat</span>
-        </button>
-
-        {/* 3. Batch Pipeline Studio */}
+        {/* 2. Batch Pipeline Studio */}
         <button
           type="button"
           onClick={() => onTabChange('pipeline')}
@@ -56,7 +44,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span>Pipeline</span>
         </button>
 
-        {/* 4. Client-side OCR */}
+        {/* 3. Client-side OCR */}
         <button
           type="button"
           onClick={() => onTabChange('ocr')}
@@ -68,7 +56,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span>OCR</span>
         </button>
 
-        {/* 5. Security & Auto-Purge */}
+        {/* 4. Security & Auto-Purge */}
         <button
           type="button"
           onClick={onOpenSecurity}
