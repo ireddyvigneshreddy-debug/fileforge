@@ -77,6 +77,11 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [pdfPasswordConfirm, setPdfPasswordConfirm] = useState('');
   const [reorderOrderStr, setReorderOrderStr] = useState('1, 2, 3');
   const [reorderRotations, setReorderRotations] = useState<number[]>([]);
+
+  const handleReorderChange = React.useCallback((evt: { orderString: string; rotations: number[] }) => {
+    setReorderOrderStr(evt.orderString);
+    setReorderRotations(evt.rotations);
+  }, []);
   const [pdfToImgFormat, setPdfToImgFormat] = useState<'image/png' | 'image/jpeg'>('image/png');
   const [pdfToImgDpi, setPdfToImgDpi] = useState<number>(2);
   const [cropAspect, setCropAspect] = useState<'free' | '1:1' | '16:9' | '4:3' | '9:16'>('free');
@@ -1537,10 +1542,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                   <PDFPageReorderGrid
                     file={files[0] || null}
                     initialOrderStr={reorderOrderStr}
-                    onOrderChange={(evt) => {
-                      setReorderOrderStr(evt.orderString);
-                      setReorderRotations(evt.rotations);
-                    }}
+                    onOrderChange={handleReorderChange}
                   />
                 </div>
               )}
