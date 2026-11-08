@@ -392,18 +392,43 @@ export async function rotatePDF(
 }
 
 // 5. REORDER / ORGANIZE PDF
-export async function reorderPDF(file: File, pageOrder: number[]): Promise<Blob> {
+export async function reorderPDF(
+  file: File,
+  pageOrder: number[],
+  pageRotations?: number[] | Record<number, number>
+): Promise<Blob> {
   const arrayBuffer = await fileToArrayBuffer(file);
   const srcPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
   const newPdf = await PDFDocument.create();
 
-  const validIndices = pageOrder.filter((idx) => idx >= 0 && idx < srcPdf.getPageCount());
-  if (validIndices.length === 0) {
+  const validIndicesWithRotations: { index: number; rotation: number }[] = [];
+  pageOrder.forEach((idx, i) => {
+    if (idx >= 0 && idx < srcPdf.getPageCount()) {
+      let rot = 0;
+      if (Array.isArray(pageRotations)) {
+        rot = pageRotations[i] || 0;
+      } else if (pageRotations && typeof pageRotations === 'object') {
+        rot = pageRotations[idx] || 0;
+      }
+      validIndicesWithRotations.push({ index: idx, rotation: rot });
+    }
+  });
+
+  if (validIndicesWithRotations.length === 0) {
     throw new Error('At least one page must be kept.');
   }
 
-  const copiedPages = await newPdf.copyPages(srcPdf, validIndices);
-  copiedPages.forEach((p) => newPdf.addPage(p));
+  const indicesToCopy = validIndicesWithRotations.map((v) => v.index);
+  const copiedPages = await newPdf.copyPages(srcPdf, indicesToCopy);
+
+  copiedPages.forEach((p, i) => {
+    const extraRot = validIndicesWithRotations[i].rotation;
+    if (extraRot) {
+      const currentRot = p.getRotation().angle;
+      p.setRotation(degrees((currentRot + extraRot) % 360));
+    }
+    newPdf.addPage(p);
+  });
 
   const pdfBytes = await newPdf.save();
   return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });

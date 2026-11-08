@@ -16,6 +16,7 @@ import { AIDocumentChatPanel } from '@/components/ai/AIDocumentChatPanel';
 import { ClientSideOCRScanner } from '@/components/ocr/ClientSideOCRScanner';
 import { BatchPipelineStudio } from '@/components/pipeline/BatchPipelineStudio';
 import { FeedbackReportBlock } from '@/components/common/FeedbackReportBlock';
+import { PDFPageReorderGrid } from '@/components/tools/PDFPageReorderGrid';
 
 import {
   Sparkles,
@@ -75,6 +76,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [pdfPassword, setPdfPassword] = useState('');
   const [pdfPasswordConfirm, setPdfPasswordConfirm] = useState('');
   const [reorderOrderStr, setReorderOrderStr] = useState('1, 2, 3');
+  const [reorderRotations, setReorderRotations] = useState<number[]>([]);
   const [pdfToImgFormat, setPdfToImgFormat] = useState<'image/png' | 'image/jpeg'>('image/png');
   const [pdfToImgDpi, setPdfToImgDpi] = useState<number>(2);
   const [cropAspect, setCropAspect] = useState<'free' | '1:1' | '16:9' | '4:3' | '9:16'>('free');
@@ -426,7 +428,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         if (order.length === 0) throw new Error('Please specify valid page order (e.g. 2, 1, 3).');
         setMessage('Reorganizing page indexes and compiling PDF...');
         setProgress(60);
-        outBlob = await PDFEngine.reorderPDF(files[0], order);
+        outBlob = await PDFEngine.reorderPDF(files[0], order, reorderRotations);
         outFileName = `organized-${files[0].name}`;
       } else if (tool.id === 'pdf-to-images') {
         if (!files[0]) throw new Error('Please select a PDF file to convert.');
@@ -1532,19 +1534,14 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               {/* Reorder / Organize PDF */}
               {tool.id === 'reorder-pdf' && (
                 <div className="space-y-3">
-                  <label className="block text-xs font-medium text-slate-300">
-                    Desired Page Order (e.g. 2, 1, 3 to swap first two pages, or 1, 3 to drop page 2):
-                  </label>
-                  <input
-                    type="text"
-                    value={reorderOrderStr}
-                    onChange={(e) => setReorderOrderStr(e.target.value)}
-                    className="w-full bg-slate-950 px-3 py-2 rounded-xl border border-white/15 text-xs text-white"
-                    placeholder="2, 1, 3, 4"
+                  <PDFPageReorderGrid
+                    file={files[0] || null}
+                    initialOrderStr={reorderOrderStr}
+                    onOrderChange={(evt) => {
+                      setReorderOrderStr(evt.orderString);
+                      setReorderRotations(evt.rotations);
+                    }}
                   />
-                  <p className="text-[11px] text-slate-400">
-                    Rearrange, duplicate, or excise pages by typing the sequence of pages to keep in order.
-                  </p>
                 </div>
               )}
 
