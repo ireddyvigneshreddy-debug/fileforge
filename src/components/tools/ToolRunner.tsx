@@ -77,11 +77,18 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [pdfPasswordConfirm, setPdfPasswordConfirm] = useState('');
   const [reorderOrderStr, setReorderOrderStr] = useState('1, 2, 3');
   const [reorderRotations, setReorderRotations] = useState<number[]>([]);
+  const [reorderPagePlans, setReorderPagePlans] = useState<PDFEngine.ReorderPagePlanItem[]>([]);
 
-  const handleReorderChange = React.useCallback((evt: { orderString: string; rotations: number[] }) => {
-    setReorderOrderStr(evt.orderString);
-    setReorderRotations(evt.rotations);
-  }, []);
+  const handleReorderChange = React.useCallback(
+    (evt: { orderString: string; rotations: number[]; pagePlans?: PDFEngine.ReorderPagePlanItem[] }) => {
+      setReorderOrderStr(evt.orderString);
+      setReorderRotations(evt.rotations);
+      if (evt.pagePlans) {
+        setReorderPagePlans(evt.pagePlans);
+      }
+    },
+    []
+  );
   const [pdfToImgFormat, setPdfToImgFormat] = useState<'image/png' | 'image/jpeg'>('image/png');
   const [pdfToImgDpi, setPdfToImgDpi] = useState<number>(2);
   const [cropAspect, setCropAspect] = useState<'free' | '1:1' | '16:9' | '4:3' | '9:16'>('free');
@@ -426,12 +433,14 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         }
       } else if (tool.id === 'reorder-pdf') {
         if (!files[0]) throw new Error('Please select a PDF file.');
-        const order = reorderOrderStr
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10) - 1)
-          .filter((n) => !isNaN(n));
+        const order = reorderPagePlans.length > 0
+          ? reorderPagePlans
+          : reorderOrderStr
+              .split(',')
+              .map((s) => parseInt(s.trim(), 10) - 1)
+              .filter((n) => !isNaN(n));
         if (order.length === 0) throw new Error('Please specify valid page order (e.g. 2, 1, 3).');
-        setMessage('Reorganizing page indexes and compiling PDF...');
+        setMessage('Reorganizing pages and embedding custom device assets...');
         setProgress(60);
         outBlob = await PDFEngine.reorderPDF(files[0], order, reorderRotations);
         outFileName = `organized-${files[0].name}`;

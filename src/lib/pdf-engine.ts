@@ -391,44 +391,131 @@ export async function rotatePDF(
   return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
 }
 
-// 5. REORDER / ORGANIZE PDF
+export interface ReorderPagePlanItem {
+  type: 'original' | 'image';
+  originalIndex?: number;
+  imageFile?: File;
+  rotation?: number;
+}
+
+// Helper to convert any image format (JPG, PNG, WebP) to PDF-compatible bytes
+async function prepareImageBytesForPdf(file: File): Promise<{ bytes: Uint8Array; isPng: boolean }> {
+  if (file.type.includes('png')) {
+    return { bytes: new Uint8Array(await file.arrayBuffer()), isPng: true };
+  }
+  if (file.type.includes('jpeg') || file.type.includes('jpg')) {
+    return { bytes: new Uint8Array(await file.arrayBuffer()), isPng: false };
+  }
+  // Convert WebP / GIF / etc. via canvas to high-res JPEG
+  if (typeof window !== 'undefined' && 'createImageBitmap' in window) {
+    try {
+      const bmp = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bmp, 0, 0);
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.94));
+        if (blob) {
+          return { bytes: new Uint8Array(await blob.arrayBuffer()), isPng: false };
+        }
+      }
+    } catch (e) {
+      console.warn('Image rasterization fallback:', e);
+    }
+  }
+  return { bytes: new Uint8Array(await file.arrayBuffer()), isPng: false };
+}
+
+// 5. REORDER / ORGANIZE PDF (Supports reordering, rotating, and replacing/inserting images from device)
 export async function reorderPDF(
   file: File,
-  pageOrder: number[],
+  pageOrder: (number | ReorderPagePlanItem)[],
   pageRotations?: number[] | Record<number, number>
 ): Promise<Blob> {
   const arrayBuffer = await fileToArrayBuffer(file);
   const srcPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
   const newPdf = await PDFDocument.create();
 
-  const validIndicesWithRotations: { index: number; rotation: number }[] = [];
-  pageOrder.forEach((idx, i) => {
-    if (idx >= 0 && idx < srcPdf.getPageCount()) {
+  // Get default page dimensions from source PDF (fallback to standard A4)
+  const firstSrcPage = srcPdf.getPages()[0];
+  const defaultPageW = firstSrcPage ? firstSrcPage.getWidth() : 595.28;
+  const defaultPageH = firstSrcPage ? firstSrcPage.getHeight() : 841.89;
+
+  // Normalize items
+  const planItems: ReorderPagePlanItem[] = [];
+  pageOrder.forEach((item, i) => {
+    if (typeof item === 'number') {
       let rot = 0;
-      if (Array.isArray(pageRotations)) {
-        rot = pageRotations[i] || 0;
-      } else if (pageRotations && typeof pageRotations === 'object') {
-        rot = pageRotations[idx] || 0;
+      if (Array.isArray(pageRotations)) rot = pageRotations[i] || 0;
+      else if (pageRotations && typeof pageRotations === 'object') rot = pageRotations[item] || 0;
+      planItems.push({ type: 'original', originalIndex: item, rotation: rot });
+    } else if (item && typeof item === 'object') {
+      let rot = item.rotation || 0;
+      if (rot === 0) {
+        if (Array.isArray(pageRotations)) rot = pageRotations[i] || 0;
+        else if (item.originalIndex !== undefined && pageRotations && typeof pageRotations === 'object') {
+          rot = pageRotations[item.originalIndex] || 0;
+        }
       }
-      validIndicesWithRotations.push({ index: idx, rotation: rot });
+      planItems.push({ ...item, rotation: rot });
     }
   });
 
-  if (validIndicesWithRotations.length === 0) {
+  const validItems = planItems.filter((it) => {
+    if (it.type === 'original') {
+      return it.originalIndex !== undefined && it.originalIndex >= 0 && it.originalIndex < srcPdf.getPageCount();
+    }
+    if (it.type === 'image') {
+      return !!it.imageFile;
+    }
+    return false;
+  });
+
+  if (validItems.length === 0) {
     throw new Error('At least one page must be kept.');
   }
 
-  const indicesToCopy = validIndicesWithRotations.map((v) => v.index);
-  const copiedPages = await newPdf.copyPages(srcPdf, indicesToCopy);
+  for (const item of validItems) {
+    if (item.type === 'original' && item.originalIndex !== undefined) {
+      const [copiedPage] = await newPdf.copyPages(srcPdf, [item.originalIndex]);
+      const extraRot = item.rotation || 0;
+      if (extraRot) {
+        const currentRot = copiedPage.getRotation().angle;
+        copiedPage.setRotation(degrees((currentRot + extraRot) % 360));
+      }
+      newPdf.addPage(copiedPage);
+    } else if (item.type === 'image' && item.imageFile) {
+      // Embed image selected directly from device
+      const { bytes, isPng } = await prepareImageBytesForPdf(item.imageFile);
+      const embedded = isPng ? await newPdf.embedPng(bytes) : await newPdf.embedJpg(bytes);
 
-  copiedPages.forEach((p, i) => {
-    const extraRot = validIndicesWithRotations[i].rotation;
-    if (extraRot) {
-      const currentRot = p.getRotation().angle;
-      p.setRotation(degrees((currentRot + extraRot) % 360));
+      const imgW = embedded.width;
+      const imgH = embedded.height;
+
+      // Fit image neatly inside document bounds with comfortable margins
+      const margin = 20;
+      const pageW = defaultPageW;
+      const pageH = defaultPageH;
+      const maxDrawW = pageW - margin * 2;
+      const maxDrawH = pageH - margin * 2;
+      const scale = Math.min(maxDrawW / imgW, maxDrawH / imgH, 1);
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+
+      const newPage = newPdf.addPage([pageW, pageH]);
+      newPage.drawImage(embedded, {
+        x: (pageW - drawW) / 2,
+        y: (pageH - drawH) / 2,
+        width: drawW,
+        height: drawH,
+        rotate: degrees((item.rotation || 0) % 360),
+      });
     }
-    newPdf.addPage(p);
-  });
+  }
 
   const pdfBytes = await newPdf.save();
   return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });

@@ -21,18 +21,25 @@ import {
   X,
   CheckSquare,
   Square,
-  Grid,
+  Image as ImageIcon,
+  ImagePlus,
+  ImageUp,
+  Upload,
 } from 'lucide-react';
+import { ReorderPagePlanItem } from '@/lib/pdf-engine';
 
 export interface PageReorderItem {
   id: string;
-  originalIndex: number; // 0-based index in the source PDF
+  originalIndex: number; // 0-based index in the source PDF (-1 for custom inserted images)
   originalPageNumber: number; // 1-based original page number
   previewUrl: string | null;
+  originalPreviewUrl?: string | null; // Keeps original PDF thumbnail so user can revert
   aspectRatio: number;
   rotation: number; // 0, 90, 180, 270
   isExcluded: boolean;
   selected?: boolean;
+  customImageFile?: File | null; // Device image replacing this page or inserted
+  customImageName?: string | null;
 }
 
 export interface ReorderChangeEvent {
@@ -41,6 +48,7 @@ export interface ReorderChangeEvent {
   orderString: string; // 1-based human-readable string (e.g. "2, 1, 3")
   totalPages: number;
   activeCount: number;
+  pagePlans?: ReorderPagePlanItem[]; // Full structured plan including device images
 }
 
 interface PDFPageReorderGridProps {
@@ -83,6 +91,11 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
   const [showManualInput, setShowManualInput] = useState<boolean>(false);
   const [manualStr, setManualStr] = useState<string>(initialOrderStr);
 
+  // Device image replacement & addition inputs
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const addImagesInputRef = useRef<HTMLInputElement>(null);
+  const [targetReplaceIndex, setTargetReplaceIndex] = useState<number | null>(null);
+
   // Zoom / Fullscreen Modal (Paperknife feature)
   const [zoomPage, setZoomPage] = useState<PageReorderItem | null>(null);
   const [zoomHighResUrl, setZoomHighResUrl] = useState<string | null>(null);
@@ -99,14 +112,30 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
   }, [onOrderChange]);
 
   const abortControllerRef = useRef<{ aborted: boolean }>({ aborted: false });
-  const isFirstLoadRef = useRef<boolean>(true);
 
   // Stable callback to notify parent
   const notifyParent = useCallback((currentPages: PageReorderItem[]) => {
     const activePages = currentPages.filter((p) => !p.isExcluded);
-    const orderIndices = activePages.map((p) => p.originalIndex);
+    const orderIndices = activePages.map((p) => (p.originalIndex >= 0 ? p.originalIndex : 0));
     const rotations = activePages.map((p) => p.rotation);
-    const orderString = activePages.map((p) => p.originalPageNumber).join(', ');
+    const orderString = activePages
+      .map((p) => (p.customImageName ? `[${p.customImageName}]` : `${p.originalPageNumber}`))
+      .join(', ');
+
+    const pagePlans: ReorderPagePlanItem[] = activePages.map((p) => {
+      if (p.customImageFile) {
+        return {
+          type: 'image',
+          imageFile: p.customImageFile,
+          rotation: p.rotation,
+        };
+      }
+      return {
+        type: 'original',
+        originalIndex: p.originalIndex,
+        rotation: p.rotation,
+      };
+    });
 
     setManualStr(orderString);
     if (onOrderChangeRef.current) {
@@ -116,6 +145,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
         orderString,
         totalPages: currentPages.length,
         activeCount: activePages.length,
+        pagePlans,
       });
     }
   }, []);
@@ -139,7 +169,6 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     setIsLoading(true);
     setError(null);
     setLoadProgress({ current: 0, total: 0 });
-    isFirstLoadRef.current = true;
 
     const loadThumbnails = async () => {
       try {
@@ -176,6 +205,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
           originalIndex: i,
           originalPageNumber: i + 1,
           previewUrl: createPlaceholderSvg(i + 1),
+          originalPreviewUrl: createPlaceholderSvg(i + 1),
           aspectRatio: 0.707,
           rotation: 0,
           isExcluded: false,
@@ -223,16 +253,23 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
               const ratio = viewport.width / viewport.height;
 
               setPages((prev) =>
-                prev.map((item) =>
-                  item.originalIndex === i - 1
-                    ? { ...item, previewUrl: dataUrl, aspectRatio: ratio }
-                    : item
-                )
+                prev.map((item) => {
+                  if (item.originalIndex === i - 1) {
+                    // Only update preview if user hasn't already replaced it with a device image
+                    const preview = item.customImageFile ? item.previewUrl : dataUrl;
+                    return {
+                      ...item,
+                      previewUrl: preview,
+                      originalPreviewUrl: dataUrl,
+                      aspectRatio: ratio,
+                    };
+                  }
+                  return item;
+                })
               );
             }
           } catch (renderErr) {
             console.warn(`Render fallback for page ${i}:`, renderErr);
-            // Fallback SVG already in place, no crash or freeze!
           }
 
           setLoadProgress({ current: i, total: numPages });
@@ -264,9 +301,15 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
   const openZoomModal = async (item: PageReorderItem) => {
     setZoomPage(item);
     setZoomHighResUrl(item.previewUrl);
-    setIsZoomLoading(true);
+    setIsZoomLoading(false);
 
-    if (pdfDocRef.current) {
+    // If it's a device image, previewUrl is already full quality
+    if (item.customImageFile) {
+      return;
+    }
+
+    if (pdfDocRef.current && item.originalIndex >= 0) {
+      setIsZoomLoading(true);
       try {
         const page = await pdfDocRef.current.getPage(item.originalPageNumber);
         const unscaledViewport = page.getViewport({ scale: 1.0 });
@@ -292,8 +335,118 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
       } finally {
         setIsZoomLoading(false);
       }
-    } else {
-      setIsZoomLoading(false);
+    }
+  };
+
+  // Device Image Replacement Handlers
+  const triggerReplacePageWithDeviceImage = (index: number) => {
+    setTargetReplaceIndex(index);
+    if (replaceFileInputRef.current) {
+      replaceFileInputRef.current.value = '';
+      replaceFileInputRef.current.click();
+    }
+  };
+
+  const handleDeviceImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pickedFile = e.target.files?.[0];
+    if (!pickedFile || targetReplaceIndex === null) return;
+
+    const blobUrl = URL.createObjectURL(pickedFile);
+
+    setPages((prev) => {
+      const updated = prev.map((p, idx) => {
+        if (idx !== targetReplaceIndex) return p;
+        return {
+          ...p,
+          customImageFile: pickedFile,
+          customImageName: pickedFile.name,
+          originalPreviewUrl: p.originalPreviewUrl || p.previewUrl,
+          previewUrl: blobUrl,
+        };
+      });
+      notifyParent(updated);
+      return updated;
+    });
+
+    if (zoomPage && targetReplaceIndex !== null && pages[targetReplaceIndex]?.id === zoomPage.id) {
+      setZoomPage((prev) =>
+        prev
+          ? {
+              ...prev,
+              customImageFile: pickedFile,
+              customImageName: pickedFile.name,
+              previewUrl: blobUrl,
+            }
+          : null
+      );
+      setZoomHighResUrl(blobUrl);
+    }
+
+    setTargetReplaceIndex(null);
+  };
+
+  // Revert custom image back to original PDF page
+  const revertToOriginalPage = (index: number) => {
+    setPages((prev) => {
+      const updated = prev.map((p, idx) => {
+        if (idx !== index) return p;
+        return {
+          ...p,
+          customImageFile: null,
+          customImageName: null,
+          previewUrl: p.originalPreviewUrl || createPlaceholderSvg(p.originalPageNumber),
+        };
+      });
+      notifyParent(updated);
+      return updated;
+    });
+
+    if (zoomPage && pages[index]?.id === zoomPage.id) {
+      const originalPreview = pages[index].originalPreviewUrl || createPlaceholderSvg(pages[index].originalPageNumber);
+      setZoomPage((prev) =>
+        prev
+          ? {
+              ...prev,
+              customImageFile: null,
+              customImageName: null,
+              previewUrl: originalPreview,
+            }
+          : null
+      );
+      setZoomHighResUrl(originalPreview);
+    }
+  };
+
+  // Insert new Image(s) directly from device into the document sequence
+  const handleAddDeviceImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    const newItems: PageReorderItem[] = selectedFiles.map((imgFile, idx) => {
+      const blobUrl = URL.createObjectURL(imgFile);
+      return {
+        id: `page-device-img-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+        originalIndex: -1,
+        originalPageNumber: 0,
+        previewUrl: blobUrl,
+        originalPreviewUrl: blobUrl,
+        customImageFile: imgFile,
+        customImageName: imgFile.name,
+        aspectRatio: 0.75,
+        rotation: 0,
+        isExcluded: false,
+        selected: false,
+      };
+    });
+
+    setPages((prev) => {
+      const updated = [...prev, ...newItems];
+      notifyParent(updated);
+      return updated;
+    });
+
+    if (addImagesInputRef.current) {
+      addImagesInputRef.current.value = '';
     }
   };
 
@@ -363,7 +516,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
       return updated;
     });
 
-    if (zoomPage && zoomPage.originalIndex === pages[index]?.originalIndex) {
+    if (zoomPage && zoomPage.id === pages[index]?.id) {
       setZoomPage((prev) => (prev ? { ...prev, rotation: (prev.rotation + angleDelta + 360) % 360 } : null));
     }
   };
@@ -430,8 +583,16 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     setPages((prev) => {
       const originalMap = new Map<number, PageReorderItem>();
       prev.forEach((p) => {
-        if (!originalMap.has(p.originalIndex)) {
-          originalMap.set(p.originalIndex, { ...p, rotation: 0, isExcluded: false, selected: false });
+        if (p.originalIndex >= 0 && !originalMap.has(p.originalIndex)) {
+          originalMap.set(p.originalIndex, {
+            ...p,
+            rotation: 0,
+            isExcluded: false,
+            selected: false,
+            customImageFile: null,
+            customImageName: null,
+            previewUrl: p.originalPreviewUrl || createPlaceholderSvg(p.originalPageNumber),
+          });
         }
       });
       const sorted = Array.from(originalMap.values()).sort((a, b) => a.originalIndex - b.originalIndex);
@@ -480,7 +641,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     setPages((prev) => {
       const pageLookup = new Map<number, PageReorderItem>();
       prev.forEach((p) => {
-        if (!pageLookup.has(p.originalPageNumber)) {
+        if (p.originalPageNumber > 0 && !pageLookup.has(p.originalPageNumber)) {
           pageLookup.set(p.originalPageNumber, p);
         }
       });
@@ -508,6 +669,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
   const activePages = pages.filter((p) => !p.isExcluded);
   const excludedPages = pages.filter((p) => p.isExcluded);
   const selectedPages = pages.filter((p) => p.selected && !p.isExcluded);
+  const customImagesCount = pages.filter((p) => !!p.customImageFile && !p.isExcluded).length;
 
   if (!file) {
     return (
@@ -517,7 +679,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
         </div>
         <p className="text-sm font-medium text-slate-200">No PDF selected yet</p>
         <p className="text-xs text-slate-400 max-w-md mx-auto">
-          Upload a PDF above to visually preview pages and freely drag, drop, rotate, and reorganize them in any order.
+          Upload a PDF above to visually preview pages, drag and drop rearrange them, or replace pages directly with images from your device.
         </p>
       </div>
     );
@@ -533,6 +695,25 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Hidden file input for replacing page with image from device */}
+      <input
+        type="file"
+        ref={replaceFileInputRef}
+        accept="image/png,image/jpeg,image/webp,image/jpg"
+        className="hidden"
+        onChange={handleDeviceImageSelected}
+      />
+
+      {/* Hidden file input for adding new images from device */}
+      <input
+        type="file"
+        ref={addImagesInputRef}
+        multiple
+        accept="image/png,image/jpeg,image/webp,image/jpg"
+        className="hidden"
+        onChange={handleAddDeviceImages}
+      />
+
       {/* Header & Quick Action Bar (Paperknife Style) */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-950/80 border border-white/10 shadow-lg shadow-black/30">
         <div className="flex items-center gap-3">
@@ -545,6 +726,12 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-medium">
                 Drag & Drop
               </span>
+              {customImagesCount > 0 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium flex items-center gap-1">
+                  <ImageIcon className="w-2.5 h-2.5" />
+                  {customImagesCount} Device Image{customImagesCount > 1 ? 's' : ''}
+                </span>
+              )}
             </h4>
             <p className="text-[11px] text-slate-400">
               {activePages.length} of {pages.length} pages included
@@ -555,6 +742,17 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
 
         {/* Quick Toolbar */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {/* Add Image from Device Button */}
+          <button
+            type="button"
+            onClick={() => addImagesInputRef.current?.click()}
+            className="px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition-colors flex items-center gap-1.5 text-[11px] font-medium cursor-pointer shadow-sm"
+            title="Upload images directly from your device into the document"
+          >
+            <ImagePlus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>+ Add Images from Device</span>
+          </button>
+
           {/* Grid Size Switcher */}
           <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-0.5">
             <button
@@ -733,7 +931,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
             </button>
           </div>
           <p className="text-[11px] text-slate-400">
-            Type page numbers in your preferred order. The visual cards below will update automatically.
+            Type page numbers in your preferred order. Replaced images appear as filenames in brackets.
           </p>
         </div>
       )}
@@ -745,6 +943,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
           const isOver = dragOverIndex === index;
           const isCurrentExcluded = item.isExcluded;
           const isSelected = !!item.selected;
+          const isCustomImage = !!item.customImageFile;
 
           // Compute 1-based output position among active pages
           let activeIndex = -1;
@@ -771,6 +970,8 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                   ? 'border-blue-400 ring-2 ring-blue-400 bg-blue-500/15 scale-102'
                   : isSelected
                   ? 'border-blue-400 ring-2 ring-blue-500/60 bg-blue-950/40 shadow-lg'
+                  : isCustomImage
+                  ? 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400 shadow-md shadow-black/20'
                   : isCurrentExcluded
                   ? 'border-white/5 bg-slate-950/40 opacity-50 grayscale'
                   : 'border-white/10 hover:border-blue-500/40 bg-slate-900/70 hover:bg-slate-900/90 shadow-md shadow-black/20'
@@ -796,6 +997,8 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                     className={`font-semibold px-1.5 py-0.5 rounded-md text-[10px] ${
                       isCurrentExcluded
                         ? 'bg-rose-500/20 text-rose-300'
+                        : isCustomImage
+                        ? 'bg-emerald-500/25 text-emerald-300 font-mono'
                         : 'bg-blue-500/25 text-blue-300 font-mono'
                     }`}
                   >
@@ -810,10 +1013,19 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                  <span>Orig:</span>
-                  <span className="font-mono text-slate-200 font-medium">
-                    {item.originalPageNumber}
-                  </span>
+                  {isCustomImage ? (
+                    <span className="text-emerald-400 font-medium flex items-center gap-0.5">
+                      <ImageIcon className="w-2.5 h-2.5" />
+                      Device
+                    </span>
+                  ) : (
+                    <>
+                      <span>Orig:</span>
+                      <span className="font-mono text-slate-200 font-medium">
+                        {item.originalPageNumber}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -837,6 +1049,29 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
 
+                {/* Custom Image Badge (Device Replacement) */}
+                {isCustomImage && (
+                  <div className="absolute bottom-2 left-2 right-2 z-10 bg-slate-950/90 backdrop-blur-md border border-emerald-500/40 rounded-lg px-2 py-1 flex items-center justify-between text-[10px] shadow-lg">
+                    <span className="truncate text-emerald-300 font-medium max-w-[85px] sm:max-w-[100px]" title={item.customImageName || 'Device Image'}>
+                      {item.customImageName || 'Device Image'}
+                    </span>
+                    {item.originalIndex >= 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          revertToOriginalPage(index);
+                        }}
+                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-0.5 ml-1 cursor-pointer"
+                        title="Revert back to original PDF page"
+                      >
+                        <Undo2 className="w-2.5 h-2.5 text-amber-400" />
+                        <span className="text-[9px]">Revert</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Thumbnail Image */}
                 {item.previewUrl && (
                   <div
@@ -850,7 +1085,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.previewUrl}
-                      alt={`Page ${item.originalPageNumber}`}
+                      alt={`Page ${item.originalPageNumber || 'Image'}`}
                       className="w-auto h-auto max-h-[125px] sm:max-h-[145px] object-contain rounded-sm pointer-events-none"
                     />
                   </div>
@@ -872,10 +1107,10 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                 )}
               </div>
 
-              {/* Card Footer: Action Controls with accessible mobile touch targets */}
+              {/* Card Footer: Action Controls with Replace from Device & Mobile Touch Targets */}
               <div className="flex items-center justify-between px-2 py-1.5 bg-slate-950/80 border-t border-white/5 text-slate-400">
                 {/* Move Left / Right Buttons */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <button
                     type="button"
                     disabled={index === 0}
@@ -898,8 +1133,19 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                   </button>
                 </div>
 
-                {/* Rotation & Duplicate & Exclude */}
+                {/* Replace Page with Image from Device + Rotate + Duplicate + Exclude */}
                 <div className="flex items-center gap-0.5">
+                  {/* Replace with Device Image Button */}
+                  <button
+                    type="button"
+                    onClick={() => triggerReplacePageWithDeviceImage(index)}
+                    className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-300 transition-colors cursor-pointer"
+                    title="Replace this page with an image from your device"
+                    aria-label="Replace this page with an image from your device"
+                  >
+                    <ImageUp className="w-3.5 h-3.5" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => rotatePage(index, 90)}
@@ -952,7 +1198,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-slate-500">
-            Tip: Drag cards or use &lt; &gt; arrows to organize. Click any page to enlarge.
+            Tip: Tap the image upload icon on any card to replace it directly with a photo from your device.
           </span>
         </div>
       )}
@@ -964,9 +1210,16 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-900/60">
               <div className="flex items-center gap-2 text-xs">
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-semibold font-mono">
-                  Original Page #{zoomPage.originalPageNumber}
-                </span>
+                {zoomPage.customImageName ? (
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    {zoomPage.customImageName}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-semibold font-mono">
+                    Original Page #{zoomPage.originalPageNumber}
+                  </span>
+                )}
                 {zoomPage.rotation !== 0 && (
                   <span className="text-amber-300 font-mono text-[11px]">
                     Rotated {zoomPage.rotation}°
@@ -974,6 +1227,19 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-2">
+                {/* Replace button in modal */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = pages.findIndex((p) => p.id === zoomPage.id);
+                    if (idx !== -1) triggerReplacePageWithDeviceImage(idx);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Replace this page with an image from your device"
+                >
+                  <ImageUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Replace with Image</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -1010,7 +1276,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={zoomHighResUrl}
-                    alt={`Page ${zoomPage.originalPageNumber} Preview`}
+                    alt={`Page ${zoomPage.originalPageNumber || 'Image'} Preview`}
                     className="max-h-[65vh] object-contain rounded shadow-2xl"
                   />
                 </div>
