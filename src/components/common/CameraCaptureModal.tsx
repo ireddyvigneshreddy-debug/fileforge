@@ -16,7 +16,6 @@ import {
   Scan,
   Volume2,
   VolumeX,
-  Maximize2,
 } from 'lucide-react';
 
 interface CameraCaptureModalProps {
@@ -48,14 +47,29 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
+  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const torchOnRef = useRef(false);
+  const capturedPhotosRef = useRef<CapturedPhoto[]>([]);
 
   // Camera stream state
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const facingModeRef = useRef(facingMode);
+  const selectedDeviceIdRef = useRef(selectedDeviceId);
+
+  useEffect(() => {
+    facingModeRef.current = facingMode;
+  }, [facingMode]);
+
+  useEffect(() => {
+    selectedDeviceIdRef.current = selectedDeviceId;
+  }, [selectedDeviceId]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [resolutionLabel, setResolutionLabel] = useState<string>('HD');
+  const [isUserFacing, setIsUserFacing] = useState(false);
 
   // Flash / Torch state
   const [hasHardwareTorch, setHasHardwareTorch] = useState(false);
@@ -68,69 +82,105 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   // Tap-to-focus state
   const [focusPoint, setFocusPoint] = useState<FocusPoint | null>(null);
-  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Capture & Shutter states
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
   const [isShutterFlashing, setIsShutterFlashing] = useState(false);
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
 
-  // Web Audio synthetic sounds for tactile native feedback
-  const playSound = useCallback((type: 'shutter' | 'focus') => {
-    if (!soundEnabled || typeof window === 'undefined') return;
+  // Keep capturedPhotosRef in sync for cleanup
+  useEffect(() => {
+    capturedPhotosRef.current = capturedPhotos;
+  }, [capturedPhotos]);
+
+  // AudioContext singleton manager (resuming if suspended, closing on unmount)
+  const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-
-      if (type === 'shutter') {
-        // Mechanical shutter click sound
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(800, ctx.currentTime);
-        osc1.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.08);
-        gain1.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start();
-        osc1.stop(ctx.currentTime + 0.09);
-
-        setTimeout(() => {
-          try {
-            const osc2 = ctx.createOscillator();
-            const gain2 = ctx.createGain();
-            osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(600, ctx.currentTime);
-            osc2.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.05);
-            gain2.gain.setValueAtTime(0.2, ctx.currentTime);
-            gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-            osc2.connect(gain2);
-            gain2.connect(ctx.destination);
-            osc2.start();
-            osc2.stop(ctx.currentTime + 0.06);
-          } catch {
-            // Ignore audio interruption
-          }
-        }, 40);
-      } else if (type === 'focus') {
-        // Subtle optical focus lock chirp
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(2100, ctx.currentTime);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.07);
+      if (!audioCtxRef.current) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return null;
+        audioCtxRef.current = new AudioCtx();
       }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      return audioCtxRef.current;
     } catch {
-      // Audio autoplay policy fallback
+      return null;
     }
-  }, [soundEnabled]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
+
+  // Web Audio synthetic sounds for tactile native feedback
+  const playSound = useCallback(
+    (type: 'shutter' | 'focus') => {
+      if (!soundEnabled || typeof window === 'undefined') return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+
+        if (type === 'shutter') {
+          // Mechanical shutter click sound
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(800, ctx.currentTime);
+          osc1.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.08);
+          gain1.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start();
+          osc1.stop(ctx.currentTime + 0.09);
+
+          setTimeout(() => {
+            try {
+              if (!audioCtxRef.current) return;
+              const osc2 = ctx.createOscillator();
+              const gain2 = ctx.createGain();
+              osc2.type = 'triangle';
+              osc2.frequency.setValueAtTime(600, ctx.currentTime);
+              osc2.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.05);
+              gain2.gain.setValueAtTime(0.2, ctx.currentTime);
+              gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+              osc2.connect(gain2);
+              gain2.connect(ctx.destination);
+              osc2.start();
+              osc2.stop(ctx.currentTime + 0.06);
+            } catch {
+              // Ignore audio interruption
+            }
+          }, 40);
+        } else if (type === 'focus') {
+          // Subtle optical focus lock chirp
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(2100, ctx.currentTime);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.07);
+        }
+      } catch {
+        // Audio autoplay policy fallback
+      }
+    },
+    [soundEnabled, getAudioContext]
+  );
 
   // Mobile haptic vibration helper
   const triggerHaptic = useCallback(() => {
@@ -143,16 +193,33 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     }
   }, []);
 
-  // Stop camera tracks and reset state
+  // Update resolution label from actual dimensions
+  const updateResolutionLabel = useCallback((w: number, h: number) => {
+    if (!w || !h) return;
+    if (w >= 3840 || h >= 2160) {
+      setResolutionLabel('4K UHD');
+    } else if (w >= 1920 || h >= 1080) {
+      setResolutionLabel('1080P FHD');
+    } else if (w >= 1280 || h >= 720) {
+      setResolutionLabel('720P HD');
+    } else {
+      setResolutionLabel(`${w}×${h}`);
+    }
+  }, []);
+
+  // Stop camera tracks and reset state without re-creation on torch toggle
   const stopStream = useCallback(() => {
     if (streamRef.current) {
       // Turn off torch before stopping if on
       const track = streamRef.current.getVideoTracks()[0];
-      if (track && isTorchOn) {
+      if (track && torchOnRef.current) {
         try {
-          (track as unknown as { applyConstraints: (c: unknown) => Promise<void> }).applyConstraints({
+          const res = (track as unknown as { applyConstraints: (c: unknown) => Promise<void> }).applyConstraints({
             advanced: [{ torch: false }],
           });
+          if (res && typeof res.catch === 'function') {
+            res.catch(() => {});
+          }
         } catch {
           // Ignore track stop errors
         }
@@ -160,10 +227,11 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    torchOnRef.current = false;
     setIsStreaming(false);
     setIsTorchOn(false);
     setHasHardwareTorch(false);
-  }, [isTorchOn]);
+  }, []);
 
   // Enumerate available video devices
   const updateDeviceList = useCallback(async () => {
@@ -178,98 +246,158 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   }, []);
 
   // Start / restart live camera stream
-  const startStream = useCallback(async (mode: 'environment' | 'user', specificDeviceId?: string | null) => {
-    stopStream();
-    setErrorMsg(null);
-    setIsSwitchingCamera(true);
+  const startStream = useCallback(
+    async (mode: 'environment' | 'user', specificDeviceId?: string | null) => {
+      stopStream();
+      setErrorMsg(null);
+      setIsSwitchingCamera(true);
 
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported by this browser.');
-      }
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera access is not supported by this browser.');
+        }
 
-      const constraints: MediaStreamConstraints = {
-        video: specificDeviceId
-          ? {
-              deviceId: { exact: specificDeviceId },
-              width: { ideal: 1920, max: 3840 },
-              height: { ideal: 1080, max: 2160 },
-            }
-          : {
+        let stream: MediaStream | null = null;
+        let usedDeviceId = specificDeviceId;
+
+        // Try specific deviceId if provided
+        if (specificDeviceId) {
+          try {
+            const constraints: MediaStreamConstraints = {
+              video: {
+                deviceId: { exact: specificDeviceId },
+                width: { ideal: 1920, max: 3840 },
+                height: { ideal: 1080, max: 2160 },
+              },
+              audio: false,
+            };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+          } catch (deviceErr) {
+            console.warn('[Camera] Failed with specific deviceId, falling back to facingMode:', deviceErr);
+            usedDeviceId = null;
+            setSelectedDeviceId(null);
+          }
+        }
+
+        // Fallback to facingMode if specificDeviceId was null or failed
+        if (!stream) {
+          const fallbackConstraints: MediaStreamConstraints = {
+            video: {
               facingMode: { ideal: mode },
               width: { ideal: 1920, max: 3840 },
               height: { ideal: 1080, max: 2160 },
             },
-        audio: false,
-      };
+            audio: false,
+          };
+          stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
+        streamRef.current = stream;
 
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        // Inspect hardware capabilities (torch, zoom, focus)
-        try {
-          const getCaps = (videoTrack as unknown as { getCapabilities?: () => { torch?: boolean } }).getCapabilities;
-          if (typeof getCaps === 'function') {
-            const caps = getCaps.call(videoTrack);
-            setHasHardwareTorch(Boolean(caps && caps.torch));
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+          if (settings.deviceId && !usedDeviceId) {
+            setSelectedDeviceId(settings.deviceId);
           }
-        } catch {
-          setHasHardwareTorch(false);
+
+          // Use track settings to accurately determine front/rear mode
+          const userFacing = settings.facingMode ? settings.facingMode === 'user' : mode === 'user';
+          setIsUserFacing(userFacing);
+
+          // Inspect hardware capabilities (torch, zoom, focus)
+          try {
+            const getCaps = (videoTrack as unknown as { getCapabilities?: () => { torch?: boolean } }).getCapabilities;
+            if (typeof getCaps === 'function') {
+              const caps = getCaps.call(videoTrack);
+              setHasHardwareTorch(Boolean(caps && caps.torch));
+            } else {
+              setHasHardwareTorch(false);
+            }
+          } catch {
+            setHasHardwareTorch(false);
+          }
+
+          if (settings.width && settings.height) {
+            updateResolutionLabel(settings.width, settings.height);
+          }
         }
-      }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setIsStreaming(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch (playErr) {
+            console.warn('[Camera] video.play() interrupted:', playErr);
+          }
+          setIsStreaming(true);
 
-        // Compute resolution label once metadata is available
-        const v = videoRef.current;
-        const w = v.videoWidth || 1920;
-        const h = v.videoHeight || 1080;
-        if (w >= 3840 || h >= 2160) {
-          setResolutionLabel('4K UHD');
-        } else if (w >= 1920 || h >= 1080) {
-          setResolutionLabel('1080P FHD');
-        } else if (w >= 1280 || h >= 720) {
-          setResolutionLabel('720P HD');
+          const v = videoRef.current;
+          if (v.videoWidth && v.videoHeight) {
+            updateResolutionLabel(v.videoWidth, v.videoHeight);
+          }
+        }
+
+        await updateDeviceList();
+      } catch (err: unknown) {
+        const e = err as Error;
+        console.warn('[Camera] Failed to initialize video feed:', e);
+        if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+          setErrorMsg('Camera permission was denied. Please allow camera access in your browser settings.');
+        } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+          setErrorMsg('No camera detected on this device.');
+        } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+          setErrorMsg('Camera is currently in use by another application or blocked by the operating system.');
+        } else if (e.name === 'OverconstrainedError') {
+          setErrorMsg('The requested camera settings are not supported by your hardware.');
+        } else if (e.name === 'AbortError') {
+          setErrorMsg('Camera access was aborted. Please try again.');
         } else {
-          setResolutionLabel(`${w}×${h}`);
+          setErrorMsg('Unable to access camera. You can also use the native device camera or file picker.');
         }
+      } finally {
+        setIsSwitchingCamera(false);
       }
+    },
+    [stopStream, updateDeviceList, updateResolutionLabel]
+  );
 
-      await updateDeviceList();
-    } catch (err: unknown) {
-      const e = err as Error;
-      console.warn('[Camera] Failed to initialize video feed:', e);
-      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-        setErrorMsg('Camera permission was denied. Please allow camera access in your browser settings.');
-      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
-        setErrorMsg('No camera detected on this device.');
-      } else {
-        setErrorMsg('Unable to access camera. You can also use the native device camera or file picker.');
-      }
-    } finally {
-      setIsSwitchingCamera(false);
-    }
-  }, [stopStream, updateDeviceList]);
+  // Clear all captured photos and release object URLs
+  const clearAllPhotos = useCallback(() => {
+    setCapturedPhotos((prev) => {
+      prev.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      return [];
+    });
+    capturedPhotosRef.current = [];
+    triggerHaptic();
+  }, [triggerHaptic]);
 
-  // Lifecycle
+  // Modal close handler
+  const handleClose = useCallback(() => {
+    clearAllPhotos();
+    onClose();
+  }, [clearAllPhotos, onClose]);
+
+  // Stream Lifecycle: Only start/stop when isOpen changes
   useEffect(() => {
-    if (isOpen) {
-      setCapturedPhotos([]);
-      startStream(facingMode, selectedDeviceId);
-    } else {
-      stopStream();
-    }
+    if (!isOpen) return;
+
+    let isCancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!isCancelled) {
+        await startStream(facingModeRef.current, selectedDeviceIdRef.current);
+      }
+    })();
 
     return () => {
+      isCancelled = true;
       stopStream();
+      capturedPhotosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      capturedPhotosRef.current = [];
       if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
     };
-  }, [isOpen, facingMode, selectedDeviceId, startStream, stopStream]);
+  }, [isOpen, startStream, stopStream]);
 
   // 1. TAP-TO-FOCUS INTERACTION
   const handleViewfinderTap = async (e: React.PointerEvent<HTMLDivElement>) => {
@@ -283,7 +411,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     const relY = Math.max(0, Math.min(1, clickY / rect.height));
 
     // Show visual reticle
-    const newFocus = { x: clickX, y: clickY, id: Date.now() };
+    const newFocus: FocusPoint = { x: clickX, y: clickY, id: Date.now() };
     setFocusPoint(newFocus);
     playSound('focus');
     triggerHaptic();
@@ -299,13 +427,25 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       if (track && 'applyConstraints' in track) {
         try {
           const trackAny = track as unknown as {
-            getCapabilities?: () => { focusMode?: string[] };
+            getCapabilities?: () => { focusMode?: string[]; pointsOfInterest?: boolean };
             applyConstraints: (c: unknown) => Promise<void>;
           };
           const caps = trackAny.getCapabilities ? trackAny.getCapabilities() : {};
-          if (caps && caps.focusMode && (caps.focusMode.includes('continuous') || caps.focusMode.includes('manual'))) {
+          const focusModes = caps?.focusMode;
+          const supportsFocusMode =
+            focusModes &&
+            (focusModes.includes('continuous') || focusModes.includes('manual'));
+          const supportsPOI = Boolean(caps && ('pointsOfInterest' in caps));
+
+          if (supportsFocusMode && focusModes) {
+            const advancedConstraint: Record<string, unknown> = {
+              focusMode: focusModes.includes('continuous') ? 'continuous' : 'manual',
+            };
+            if (supportsPOI) {
+              advancedConstraint.pointsOfInterest = [{ x: relX, y: relY }];
+            }
             await trackAny.applyConstraints({
-              advanced: [{ focusMode: 'continuous', pointsOfInterest: [{ x: relX, y: relY }] }],
+              advanced: [advancedConstraint],
             });
           }
         } catch {
@@ -317,8 +457,10 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   // 2. FLASH / TORCH TOGGLE CONTROL
   const toggleTorch = async () => {
+    if (!isStreaming) return;
     const nextTorch = !isTorchOn;
     setIsTorchOn(nextTorch);
+    torchOnRef.current = nextTorch;
     triggerHaptic();
 
     if (streamRef.current && hasHardwareTorch) {
@@ -329,24 +471,33 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             advanced: [{ torch: nextTorch }],
           });
         } catch (err) {
-          console.warn('[Camera] Hardware torch constraint failed:', err);
+          console.warn('[Camera] Hardware torch constraint failed, falling back to screen illuminator:', err);
+          setHasHardwareTorch(false);
         }
       }
     }
   };
 
-  // 3. FRONT / REAR CAMERA SWITCHING
-  const toggleFacingMode = () => {
+  // 3. FRONT / REAR CAMERA SWITCHING (Single invocation without double restart)
+  const toggleFacingMode = async () => {
+    if (!isStreaming || isSwitchingCamera) return;
     setIsSwitchingCamera(true);
     triggerHaptic();
 
     // If multiple distinct video devices exist, cycle through them
     if (videoDevices.length > 1) {
-      const currentIndex = videoDevices.findIndex((d) => d.deviceId === selectedDeviceId);
+      const activeTrack = streamRef.current?.getVideoTracks()[0];
+      const activeDeviceId = activeTrack?.getSettings ? activeTrack.getSettings().deviceId : undefined;
+      const currentDevId = selectedDeviceId || activeDeviceId || null;
+
+      const currentIndex = currentDevId
+        ? videoDevices.findIndex((d) => d.deviceId === currentDevId)
+        : -1;
       const nextIndex = (currentIndex + 1) % videoDevices.length;
       const nextDevice = videoDevices[nextIndex];
+
       setSelectedDeviceId(nextDevice.deviceId);
-      startStream(facingMode, nextDevice.deviceId);
+      await startStream(facingMode, nextDevice.deviceId);
       return;
     }
 
@@ -354,12 +505,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     const nextMode = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextMode);
     setSelectedDeviceId(null);
-    startStream(nextMode, null);
+    await startStream(nextMode, null);
   };
 
-  // 4. SHUTTER PHOTO CAPTURE
+  // 4. SHUTTER PHOTO CAPTURE (Enforcing maxPhotos and mirroring front camera)
   const snapPhoto = () => {
     if (!videoRef.current || !isStreaming) return;
+    if (capturedPhotos.length >= maxPhotos) return;
     const video = videoRef.current;
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
@@ -375,8 +527,12 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Flip horizontal if front-facing user camera
-    if (facingMode === 'user' && !selectedDeviceId) {
+    // Mirror horizontal if front-facing user camera (active settings or state)
+    const activeTrack = streamRef.current?.getVideoTracks()[0];
+    const trackFacingMode = activeTrack?.getSettings ? activeTrack.getSettings().facingMode : undefined;
+    const shouldMirror = trackFacingMode ? trackFacingMode === 'user' : isUserFacing || facingMode === 'user';
+
+    if (shouldMirror) {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
     }
@@ -393,14 +549,20 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           previewUrl,
         };
 
-        setCapturedPhotos((prev) => [...prev, newPhoto]);
+        setCapturedPhotos((prev) => {
+          if (prev.length >= maxPhotos) {
+            URL.revokeObjectURL(previewUrl);
+            return prev;
+          }
+          return [...prev, newPhoto];
+        });
       },
       'image/jpeg',
-      0.96
+      0.88
     );
   };
 
-  // Remove photo from captured list
+  // Remove individual photo from captured list and revoke its URL
   const deletePhoto = (id: string) => {
     setCapturedPhotos((prev) => {
       const target = prev.find((p) => p.id === id);
@@ -409,25 +571,41 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     });
   };
 
-  // Fallback native mobile camera input
+  // Fallback native mobile camera input with maxPhotos enforcement
   const handleNativeFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newPhotos: CapturedPhoto[] = Array.from(files).map((f) => ({
+    const remainingSlots = Math.max(0, maxPhotos - capturedPhotos.length);
+    if (remainingSlots <= 0) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+    const newPhotos: CapturedPhoto[] = selectedFiles.map((f) => ({
       id: `native-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       blob: f,
       previewUrl: URL.createObjectURL(f),
     }));
 
-    setCapturedPhotos((prev) => [...prev, ...newPhotos]);
+    setCapturedPhotos((prev) => {
+      const combined = [...prev, ...newPhotos];
+      if (combined.length > maxPhotos) {
+        const excess = combined.slice(maxPhotos);
+        excess.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+        return combined.slice(0, maxPhotos);
+      }
+      return combined;
+    });
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Finalize & pass captured files to parent
   const handleDone = () => {
     if (capturedPhotos.length === 0) {
-      onClose();
+      handleClose();
       return;
     }
 
@@ -437,6 +615,10 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         lastModified: Date.now(),
       });
     });
+
+    capturedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    capturedPhotosRef.current = [];
+    setCapturedPhotos([]);
 
     onPhotosCaptured(files);
     onClose();
@@ -457,6 +639,11 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       >
         {/* TOP NATIVE HUD BAR */}
         <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-slate-950/80 border-b border-white/10 flex items-center justify-between z-30 backdrop-blur-xl">
+          {/* Accessible Title */}
+          <h2 id="camera-modal-title" className="sr-only">
+            Live Camera Capture & Document Scanner
+          </h2>
+
           {/* Status & Telemetry Indicators */}
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/90 border border-white/10 text-[11px] font-mono">
@@ -479,13 +666,18 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             <button
               type="button"
               onClick={toggleTorch}
-              className={`p-2 rounded-xl border transition flex items-center gap-1 cursor-pointer ${
-                isTorchOn
-                  ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.4)]'
-                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+              disabled={!isStreaming}
+              className={`p-2 rounded-xl border transition flex items-center gap-1 ${
+                !isStreaming
+                  ? 'opacity-40 cursor-not-allowed bg-white/5 border-white/10 text-slate-500'
+                  : isTorchOn
+                  ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.4)] cursor-pointer'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer'
               }`}
               title={
-                hasHardwareTorch
+                !isStreaming
+                  ? 'Camera must be active to toggle flash/torch'
+                  : hasHardwareTorch
                   ? `Hardware Torch: ${isTorchOn ? 'ON' : 'OFF'}`
                   : `Screen Illuminator: ${isTorchOn ? 'ACTIVE' : 'OFF'}`
               }
@@ -549,7 +741,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             {/* Close Modal */}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition ml-1 cursor-pointer"
               aria-label="Close camera modal"
             >
@@ -569,7 +761,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         >
           {/* Shutter Exposure Flash Animation */}
           {isShutterFlashing && (
-            <div className="absolute inset-0 bg-white z-40 pointer-events-none opacity-90 animate-out fade-out duration-120" />
+            <div className="absolute inset-0 bg-white z-40 pointer-events-none opacity-90 animate-out fade-out duration-[120ms]" />
           )}
 
           {/* Screen Illuminator Light Beam (when torch is active without hardware LED) */}
@@ -583,8 +775,9 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             playsInline
             autoPlay
             muted
+            onLoadedMetadata={(e) => updateResolutionLabel(e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
             className={`w-full h-full object-cover transition-transform duration-300 ${
-              facingMode === 'user' && !selectedDeviceId ? 'scale-x-[-1]' : ''
+              isUserFacing ? 'scale-x-[-1]' : ''
             } ${isSwitchingCamera ? 'opacity-40 scale-95 blur-sm' : 'opacity-100 scale-100'}`}
           />
 
@@ -723,7 +916,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 type="button"
                 onClick={toggleFacingMode}
                 disabled={!isStreaming || isSwitchingCamera}
-                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-slate-200 hover:text-white transition flex items-center justify-center cursor-pointer disabled:opacity-40"
+                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-slate-200 hover:text-white transition flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Switch Camera (Front / Rear)"
               >
                 <FlipHorizontal className={`w-5 h-5 text-cyan-400 ${isSwitchingCamera ? 'animate-spin' : ''}`} />
@@ -744,13 +937,17 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <button
                 type="button"
                 onClick={snapPhoto}
-                disabled={!isStreaming}
-                className={`relative w-18 h-18 sm:w-20 sm:h-20 rounded-full border-4 border-white/90 p-1 flex items-center justify-center transition-all cursor-pointer ${
-                  isStreaming
-                    ? 'hover:scale-105 active:scale-90 shadow-[0_0_25px_rgba(56,189,248,0.35)]'
+                disabled={!isStreaming || capturedPhotos.length >= maxPhotos}
+                className={`relative w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-full border-4 border-white/90 p-1 flex items-center justify-center transition-all ${
+                  isStreaming && capturedPhotos.length < maxPhotos
+                    ? 'hover:scale-105 active:scale-90 shadow-[0_0_25px_rgba(56,189,248,0.35)] cursor-pointer'
                     : 'opacity-40 cursor-not-allowed'
                 }`}
-                title="Snap Photo"
+                title={
+                  capturedPhotos.length >= maxPhotos
+                    ? `Maximum photos limit (${maxPhotos}) reached`
+                    : 'Snap Photo'
+                }
               >
                 {/* Tactile Outer Bezel & Inner Core */}
                 <div className="w-full h-full rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 shadow-inner flex items-center justify-center active:bg-white transition-colors">
@@ -765,9 +962,9 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 type="button"
                 onClick={handleDone}
                 disabled={capturedPhotos.length === 0}
-                className={`px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer shadow-lg ${
+                className={`px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition shadow-lg ${
                   capturedPhotos.length > 0
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-500/25 hover:scale-105 active:scale-95'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-500/25 hover:scale-105 active:scale-95 cursor-pointer'
                     : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
                 }`}
                 title="Add photos to FileForge"
@@ -787,10 +984,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setCapturedPhotos([]);
-                    triggerHaptic();
-                  }}
+                  onClick={clearAllPhotos}
                   className="text-rose-400 hover:text-rose-300 text-[11px] font-medium transition cursor-pointer"
                 >
                   Clear All
@@ -809,7 +1003,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                       alt={`Captured page ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    <span className="absolute bottom-1 left-1 text-[9px] font-mono font-bold text-white bg-black/70 px-1.5 py-0.2 rounded">
+                    <span className="absolute bottom-1 left-1 text-[9px] font-mono font-bold text-white bg-black/70 px-1.5 py-0.5 rounded">
                       #{index + 1}
                     </span>
                     <button

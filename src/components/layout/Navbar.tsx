@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
@@ -33,13 +33,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
-  const handleOpenSearch = () => {
+  const handleOpenSearch = useCallback(() => {
     if (onSearchClick) {
       onSearchClick();
     } else {
       setInternalSearchOpen(true);
     }
-  };
+  }, [onSearchClick]);
 
   // Global keyboard shortcut ('/' or 'Cmd+K' / 'Ctrl+K') on every page
   useEffect(() => {
@@ -57,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearchClick }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSearchClick]);
+  }, [handleOpenSearch]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {

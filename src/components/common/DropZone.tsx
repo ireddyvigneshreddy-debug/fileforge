@@ -166,7 +166,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
             onFilesChange(combined);
           }
         }}
-        maxPhotos={maxFiles}
+        maxPhotos={maxFiles === 1 ? 1 : Math.max(1, maxFiles - files.length)}
       />
 
       {/* Error message */}

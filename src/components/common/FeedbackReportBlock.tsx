@@ -23,13 +23,15 @@ interface FeedbackReportBlockProps {
 
 const DEVELOPER_EMAIL = 'ireddyvigneshreddy@gmail.com';
 
+type ReportType = 'bug' | 'quality' | 'feature' | 'other';
+
 export const FeedbackReportBlock: React.FC<FeedbackReportBlockProps> = ({
   toolName,
   toolSlug,
   initialError,
   compact = false,
 }) => {
-  const [reportType, setReportType] = useState<'bug' | 'quality' | 'feature' | 'other'>(
+  const [reportType, setReportType] = useState<ReportType>(
     initialError ? 'bug' : 'bug'
   );
   const [message, setMessage] = useState('');
@@ -188,7 +190,7 @@ export const FeedbackReportBlock: React.FC<FeedbackReportBlockProps> = ({
                 <button
                   key={type.id}
                   type="button"
-                  onClick={() => setReportType(type.id as any)}
+                  onClick={() => setReportType(type.id as ReportType)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
                     isSelected
                       ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-200 shadow-sm'

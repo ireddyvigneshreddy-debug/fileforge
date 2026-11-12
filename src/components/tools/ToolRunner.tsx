@@ -22,27 +22,15 @@ import {
   AlertCircle,
   Copy,
   Check,
-  ShieldCheck,
   Zap,
   Sliders,
-  Settings2,
-  Maximize2,
-  FileText,
-  KeyRound,
-  Download,
 } from 'lucide-react';
 
 interface ToolRunnerProps {
   tool: ToolDefinition;
 }
 
-export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
-  if (tool.id === 'ocr-extract-text') {
-    return <ClientSideOCRScanner />;
-  }
-  if (tool.id === 'batch-pipeline') {
-    return <BatchPipelineStudio />;
-  }
+const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
 
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<'idle' | 'processing' | 'done' | 'error'>('idle');
@@ -67,7 +55,8 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [pagesToRemoveStr, setPagesToRemoveStr] = useState('2, 4');
   const [metaTitle, setMetaTitle] = useState('');
   const [metaAuthor, setMetaAuthor] = useState('');
-  const [imgPdfSize, setImgPdfSize] = useState<'a4' | 'letter' | 'fit'>('a4');
+  const [imgPdfSize, setImgPdfSize] = useState<'fit' | 'a4' | 'letter'>('fit');
+  const [imgPdfMargin, setImgPdfMargin] = useState<number>(0);
   const [imgPdfOrientation, setImgPdfOrientation] = useState<'portrait' | 'landscape' | 'auto'>('auto');
   const [pdfPassword, setPdfPassword] = useState('');
   const [pdfPasswordConfirm, setPdfPasswordConfirm] = useState('');
@@ -94,7 +83,8 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   // Target Compression Controls (Guaranteed specific KB with zero-blur clarity calibration)
   const [compressMode, setCompressMode] = useState<'target' | 'quality'>('target');
   const [targetKb, setTargetKb] = useState<number>(900); // Exact KB target (Default 900 KB)
-  const [targetPreset, setTargetPreset] = useState<'950kb' | '900kb' | '800kb' | '600kb' | '500kb' | '300kb' | '150kb' | 'custom'>('900kb');
+  type TargetPreset = '950kb' | '900kb' | '800kb' | '600kb' | '500kb' | '300kb' | '150kb' | 'custom';
+  const [targetPreset, setTargetPreset] = useState<TargetPreset>('900kb');
 
   const getTargetSizeBytes = (): number | undefined => {
     if (compressMode === 'quality') return undefined;
@@ -113,7 +103,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [filterType, setFilterType] = useState<'grayscale' | 'sepia' | 'invert' | 'noir'>('grayscale');
   const [blurMode, setBlurMode] = useState<'blur' | 'pixelate'>('blur');
   const [blurIntensity, setBlurIntensity] = useState(12);
-  const [svgScale, setSvgScale] = useState(2);
+  const [svgScale] = useState(2);
   const [paletteColors, setPaletteColors] = useState<ImageEngine.PaletteColor[]>([]);
   const [base64Output, setBase64Output] = useState('');
 
@@ -165,13 +155,16 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   // Auto-generate Password on settings change
   useEffect(() => {
     if (tool.id === 'password-generator') {
-      const pass = CryptoEngine.generatePassword(passLength, {
-        upper: passUpper,
-        lower: passLower,
-        numbers: passNumbers,
-        symbols: passSymbols,
-      });
-      setGeneratedPass(pass);
+      const timer = setTimeout(() => {
+        const pass = CryptoEngine.generatePassword(passLength, {
+          upper: passUpper,
+          lower: passLower,
+          numbers: passNumbers,
+          symbols: passSymbols,
+        });
+        setGeneratedPass(pass);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [tool.id, passLength, passUpper, passLower, passNumbers, passSymbols]);
 
@@ -220,8 +213,9 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           );
           setProgress(30);
           const compRes = await PDFEngine.compressPDF(files[0], {
-            mode: compressMode === 'quality' ? 'balanced' : 'target',
+            mode: compressMode === 'quality' ? 'quality' : 'target',
             targetSizeBytes: targetBytes,
+            quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
             onProgress: (pct, msg) => {
               setProgress(pct);
               setMessage(msg);
@@ -236,8 +230,9 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
             setMessage(`Compressing PDF ${i + 1} of ${files.length} to target ~${Math.round((targetBytes || 1000 * 1024) / 1024)} KB...`);
             setProgress(Math.round(((i + 0.1) / files.length) * 100));
             const compRes = await PDFEngine.compressPDF(f, {
-              mode: compressMode === 'quality' ? 'balanced' : 'target',
+              mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
+              quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
             });
             const outName = `compressed-${f.name}`;
             processed.push({ name: outName, blob: compRes.blob, url: URL.createObjectURL(compRes.blob), size: compRes.blob.size });
@@ -357,11 +352,12 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         outFileName = `metadata-${files[0].name}`;
       } else if (tool.id === 'images-to-pdf' || tool.id === 'scan-to-pdf') {
         if (files.length === 0) throw new Error('Please snap or select one or more photos.');
-        setMessage(`Compiling ${files.length} scanned photos into PDF document...`);
+        setMessage(`Compiling ${files.length} photo${files.length > 1 ? 's' : ''} into borderless PDF document...`);
         setProgress(60);
         outBlob = await PDFEngine.imagesToPDF(files, {
           pageSize: imgPdfSize,
           orientation: imgPdfOrientation,
+          margin: imgPdfMargin,
         });
         outFileName = tool.id === 'scan-to-pdf' ? `scanned-document-${Date.now()}.pdf` : 'images-collection.pdf';
         originalSize = files.reduce((acc, f) => acc + f.size, 0);
@@ -910,8 +906,9 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
             setMessage('Applying targeted PDF stream compaction...');
             const comp = await PDFEngine.compressPDF(f, {
-              mode: compressMode === 'quality' ? 'balanced' : 'target',
+              mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
+              quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
               onProgress: (p, msg) => {
                 setProgress(p);
                 setMessage(msg);
@@ -1461,29 +1458,42 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                 </div>
               )}
 
-              {/* 7. Images to PDF */}
+              {/* 7. Images to PDF / Camera Scan to PDF */}
               {(tool.id === 'images-to-pdf' || tool.id === 'scan-to-pdf') && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Paper Size:</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Page / Paper Size:</label>
                     <select
                       value={imgPdfSize}
-                      onChange={(e) => setImgPdfSize(e.target.value as 'a4' | 'letter' | 'fit')}
+                      onChange={(e) => setImgPdfSize(e.target.value as 'fit' | 'a4' | 'letter')}
                       className="w-full bg-slate-950 px-3 py-2 rounded-xl border border-white/15 text-xs text-white"
                     >
+                      <option value="fit">Fit to Image (Borderless / Exact Image)</option>
                       <option value="a4">A4 Standard</option>
                       <option value="letter">US Letter</option>
-                      <option value="fit">Fit to Image Size</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Margins:</label>
+                    <select
+                      value={imgPdfMargin}
+                      onChange={(e) => setImgPdfMargin(parseInt(e.target.value, 10))}
+                      className="w-full bg-slate-950 px-3 py-2 rounded-xl border border-white/15 text-xs text-white"
+                    >
+                      <option value="0">No Margins (Borderless - Just Image)</option>
+                      <option value="10">Small Margin (10 pt)</option>
+                      <option value="20">Standard Margin (20 pt)</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">Orientation:</label>
                     <select
                       value={imgPdfOrientation}
+                      disabled={imgPdfSize === 'fit'}
                       onChange={(e) =>
                         setImgPdfOrientation(e.target.value as 'portrait' | 'landscape' | 'auto')
                       }
-                      className="w-full bg-slate-950 px-3 py-2 rounded-xl border border-white/15 text-xs text-white"
+                      className="w-full bg-slate-950 px-3 py-2 rounded-xl border border-white/15 text-xs text-white disabled:opacity-40"
                     >
                       <option value="auto">Auto-detect per image</option>
                       <option value="portrait">Portrait</option>
@@ -1731,11 +1741,11 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                               key={preset.id}
                               type="button"
                               onClick={() => {
-                                setTargetPreset(preset.id as any);
+                                setTargetPreset(preset.id as TargetPreset);
                                 setTargetKb(preset.kb);
                               }}
                               className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center ${
-                                targetKb === preset.kb
+                                targetPreset === preset.id || targetKb === preset.kb
                                   ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
                                   : 'bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
                               }`}
@@ -2055,11 +2065,11 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
                             key={preset.id}
                             type="button"
                             onClick={() => {
-                              setTargetPreset(preset.id as any);
+                              setTargetPreset(preset.id as TargetPreset);
                               setTargetKb(preset.kb);
                             }}
                             className={`py-1.5 rounded-lg border text-center transition text-xs font-semibold ${
-                              targetKb === preset.kb
+                              targetPreset === preset.id || targetKb === preset.kb
                                 ? 'bg-emerald-500/20 border-emerald-500 text-white'
                                 : 'bg-slate-950 border-white/10 text-slate-400 hover:text-white'
                             }`}
@@ -2137,6 +2147,7 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
 
                   {qrPreview && (
                     <div className="p-4 rounded-xl bg-slate-950 flex flex-col items-center justify-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={qrPreview.png}
                         alt="QR Code Preview"
@@ -2264,4 +2275,14 @@ export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
       </div>
     </div>
   );
+};
+
+export const ToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
+  if (tool.id === 'ocr-extract-text') {
+    return <ClientSideOCRScanner />;
+  }
+  if (tool.id === 'batch-pipeline') {
+    return <BatchPipelineStudio />;
+  }
+  return <StandardToolRunner tool={tool} />;
 };

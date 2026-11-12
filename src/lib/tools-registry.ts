@@ -50,7 +50,7 @@ export const TOOLS: ToolDefinition[] = [
     maxFiles: 50,
     actionLabel: 'Generate Scanned PDF',
     keywords: ['camera', 'scan', 'take photo', 'photo to pdf', 'scanner', 'camera to pdf'],
-    features: ['Direct camera capture', 'Multi-page document scanning', 'Auto orientation', '100% offline & private'],
+    features: ['Direct camera capture', 'Borderless exact image fit', 'Multi-page document scanning', '100% offline & private'],
   },
   {
     id: 'merge-pdf',
@@ -154,7 +154,7 @@ export const TOOLS: ToolDefinition[] = [
     maxFiles: 50,
     actionLabel: 'Create PDF',
     keywords: ['images to pdf', 'jpg to pdf', 'png to pdf'],
-    features: ['Auto orientation', 'A4 & Letter formats', 'Custom margins', 'Multiple images'],
+    features: ['Borderless 1:1 image fit', 'A4 & Letter formats', 'Custom margins', 'Multiple images'],
   },
   {
     id: 'lock-pdf',
