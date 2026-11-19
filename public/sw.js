@@ -1,5 +1,5 @@
 // FileForge Pro Service Worker - Offline-First PWA Cache
-const CACHE_NAME = 'fileforge-v12';
+const CACHE_NAME = 'fileforge-v13';
 
 const STATIC_PRECACHE = [
   '/',
@@ -9,8 +9,11 @@ const STATIC_PRECACHE = [
   '/icons/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png',
   '/icons/apple-touch-icon.png',
   '/favicon.ico',
+  '/favicon.png',
 ];
 
 const TOOL_SLUGS = [

@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, X } from 'lucide-react';
 
 interface ProcessingStateProps {
   progress: number;
   message: string;
+  onCancel?: () => void;
 }
 
-export const ProcessingState: React.FC<ProcessingStateProps> = ({ progress, message }) => {
+export const ProcessingState: React.FC<ProcessingStateProps> = ({ progress, message, onCancel }) => {
   return (
     <div className="p-8 rounded-2xl bg-slate-900/80 border border-blue-500/20 text-center space-y-5 animate-pulse">
       <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
@@ -34,7 +35,20 @@ export const ProcessingState: React.FC<ProcessingStateProps> = ({ progress, mess
         />
       </div>
 
-      <p className="text-[11px] text-slate-500">Zero data leaves your machine • 100% private</p>
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-[11px] text-slate-500">Zero data leaves your machine • 100% private</p>
+
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 text-xs font-medium transition flex items-center gap-1.5"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Cancel Operation</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

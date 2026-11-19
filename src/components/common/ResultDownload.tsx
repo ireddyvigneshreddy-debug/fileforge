@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Download, CheckCircle2, RotateCcw, ArrowRight, Eye, Mail } from 'lucide-react';
+import { Download, CheckCircle2, RotateCcw, ArrowRight, Eye, Mail, Lock, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { ProcessedResult } from '@/types/tools';
 
 interface ResultDownloadProps {
@@ -33,6 +34,11 @@ export const ResultDownload: React.FC<ResultDownloadProps> = ({ result, onReset 
     ? Math.round(((result.originalSize - result.newSize) / result.originalSize) * 100)
     : 0;
 
+  const isEncryptedVault =
+    result.fileName.endsWith('.fileforge') ||
+    result.fileName.endsWith('.enc') ||
+    result.fileName.includes('protected-');
+
   return (
     <div className="p-6 sm:p-8 rounded-2xl bg-slate-900/90 border border-emerald-500/30 text-center space-y-6">
       <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
@@ -43,6 +49,27 @@ export const ResultDownload: React.FC<ResultDownloadProps> = ({ result, onReset 
         <h3 className="text-xl font-bold text-white">Your File Is Ready!</h3>
         <p className="text-xs sm:text-sm text-slate-400">Processed in milliseconds directly in your browser.</p>
       </div>
+
+      {/* Security notice for AES-256-GCM encrypted vault (.fileforge) */}
+      {isEncryptedVault && (
+        <div className="p-4 rounded-xl bg-blue-950/40 border border-blue-500/30 text-left space-y-2 max-w-xl mx-auto">
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-300">
+            <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span>Bank-Grade AES-256-GCM Encrypted Vault (.fileforge)</span>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Your file is strongly protected with military-grade PBKDF2 + AES-GCM encryption. Because it is a sealed vault, standard PDF viewers cannot open raw encrypted data directly. To view or extract your PDF, use FileForge&apos;s{' '}
+            <Link href="/tools/unlock-pdf" className="text-cyan-400 underline font-semibold hover:text-cyan-300">
+              Unlock PDF
+            </Link>{' '}
+            tool with your password.
+          </p>
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium pt-1">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>100% Client-Side Encryption • Zero Server Exposure</span>
+          </div>
+        </div>
+      )}
 
       {/* File Size Comparison Badge */}
       {result.originalSize > 0 && (
@@ -82,7 +109,7 @@ export const ResultDownload: React.FC<ResultDownloadProps> = ({ result, onReset 
           </span>
         </a>
 
-        {result.previewUrl && (
+        {result.previewUrl && !isEncryptedVault && (
           <a
             href={result.previewUrl}
             target="_blank"

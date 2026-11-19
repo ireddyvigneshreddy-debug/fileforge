@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Layers,
   ArrowRight,
@@ -40,6 +40,29 @@ export const BatchPipelineStudio: React.FC = () => {
   const [outputZip, setOutputZip] = useState<{ blob: Blob; url: string; size: number; count: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeUrlsRef = useRef<Set<string>>(new Set());
+
+  const registerUrl = useCallback((url: string) => {
+    activeUrlsRef.current.add(url);
+    return url;
+  }, []);
+
+  const revokeAllUrls = useCallback(() => {
+    activeUrlsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore
+      }
+    });
+    activeUrlsRef.current.clear();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      revokeAllUrls();
+    };
+  }, [revokeAllUrls]);
 
   // Pipeline configuration steps
   const [steps, setSteps] = useState<PipelineStep[]>([
@@ -74,6 +97,7 @@ export const BatchPipelineStudio: React.FC = () => {
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
+    revokeAllUrls();
     setFiles((prev) => [...prev, ...Array.from(newFiles)]);
     setOutputZip(null);
   };
@@ -134,7 +158,7 @@ export const BatchPipelineStudio: React.FC = () => {
         processedFiles.push({
           name: outName,
           blob: currentBlob,
-          url: URL.createObjectURL(currentBlob),
+          url: registerUrl(URL.createObjectURL(currentBlob)),
           size: currentBlob.size,
         });
       }
@@ -143,7 +167,7 @@ export const BatchPipelineStudio: React.FC = () => {
       setProgress(90);
 
       const zipBlob = await ArchiveEngine.createZipFromBlobs(processedFiles);
-      const zipUrl = URL.createObjectURL(zipBlob);
+      const zipUrl = registerUrl(URL.createObjectURL(zipBlob));
 
       setOutputZip({
         blob: zipBlob,
@@ -363,6 +387,7 @@ export const BatchPipelineStudio: React.FC = () => {
 
             <button
               onClick={() => {
+                revokeAllUrls();
                 setOutputZip(null);
                 setFiles([]);
               }}

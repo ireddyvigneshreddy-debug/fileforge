@@ -103,11 +103,15 @@ export async function splitPDF(
   };
 }
 
+import { CompressionWorkerBridge, EncodeTaskResult } from './compression-worker';
+
 export interface CompressPDFOptions {
   mode?: 'smart' | 'target' | 'balanced' | 'aggressive' | 'extreme' | 'lossless' | 'quality';
   targetSizeBytes?: number; // Target max size in bytes (e.g. 1000 * 1024 for < 1MB)
   quality?: number; // 0.1 to 1.0
   onProgress?: (percent: number, message: string) => void;
+  signal?: AbortSignal;
+  exactPadding?: boolean; // Strictly opt-in byte alignment (default false)
 }
 
 /**
@@ -157,25 +161,10 @@ export async function compressPDF(
   file: File,
   options: CompressPDFOptions = { mode: 'target', targetSizeBytes: 1000 * 1024 }
 ): Promise<{ blob: Blob; originalSize: number; newSize: number; savingsPercent: number }> {
+  options.signal?.throwIfAborted();
   const originalSize = file.size;
   const arrayBuffer = await fileToArrayBuffer(file);
-
-  options.onProgress?.(15, 'Analyzing PDF streams and object table...');
-  const srcPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-
-  // Clean metadata and compress object streams
-  srcPdf.setTitle('');
-  srcPdf.setAuthor('');
-  srcPdf.setSubject('');
-  srcPdf.setKeywords([]);
-  srcPdf.setProducer('FileForge Optimizer');
-  srcPdf.setCreator('FileForge');
-
-  options.onProgress?.(30, 'Compacting stream dictionaries...');
-  const losslessBytes = await srcPdf.save({
-    useObjectStreams: true,
-    addDefaultPage: false,
-  });
+  options.signal?.throwIfAborted();
 
   const targetBytes = options.targetSizeBytes || (options.mode === 'extreme' ? 500 * 1024 : 1000 * 1024);
   const isTargetMode =
@@ -184,46 +173,82 @@ export async function compressPDF(
     options.mode === 'extreme' ||
     (options.mode !== 'balanced' && options.mode !== 'lossless' && options.mode !== 'smart' && !!options.targetSizeBytes);
 
-  // If lossless compaction already brought the PDF below target size (e.g. < 1MB), return it directly!
-  if (isTargetMode && losslessBytes.length <= targetBytes) {
-    options.onProgress?.(100, 'Optimization complete!');
-    let finalLosslessBytes: Uint8Array = new Uint8Array(losslessBytes);
+  // Skip wasted full-file lossless re-save on large/image-heavy PDFs:
+  // Lossless object-stream compaction typically saves 5-15% at most.
+  // Running srcPdf.save() on a 20-100MB file takes seconds, spikes hundreds of MB of RAM,
+  // and will never reduce a large PDF to a small target (e.g. 30MB down to 1MB).
+  // Only attempt lossless pass when explicitly requested, for small files in smart mode,
+  // or when the file is already near or below the target size.
+  const shouldAttemptLossless =
+    options.mode === 'lossless' ||
+    (options.mode === 'smart' && originalSize <= 8 * 1024 * 1024) ||
+    (isTargetMode && (originalSize <= targetBytes || (originalSize <= 5 * 1024 * 1024 && originalSize <= targetBytes * 1.15)));
 
-    // In target mode, if lossless is smaller than targetBytes and original was larger, align to exact target KB requested
-    if (targetBytes && finalLosslessBytes.length < targetBytes && originalSize > targetBytes) {
-      finalLosslessBytes = alignPdfBytesToTarget(finalLosslessBytes, targetBytes);
+  if (shouldAttemptLossless) {
+    options.onProgress?.(15, 'Analyzing PDF streams and object table...');
+    const srcPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+    options.signal?.throwIfAborted();
+
+    // Clean metadata and compress object streams
+    srcPdf.setTitle('');
+    srcPdf.setAuthor('');
+    srcPdf.setSubject('');
+    srcPdf.setKeywords([]);
+    srcPdf.setProducer('FileForge Optimizer');
+    srcPdf.setCreator('FileForge');
+
+    options.onProgress?.(30, 'Compacting stream dictionaries...');
+    const losslessBytes = await srcPdf.save({
+      useObjectStreams: true,
+      addDefaultPage: false,
+    });
+    options.signal?.throwIfAborted();
+
+    // If lossless compaction already brought the PDF below target size, return it directly!
+    if (isTargetMode && losslessBytes.length <= targetBytes) {
+      options.onProgress?.(100, 'Optimization complete!');
+      let finalLosslessBytes: Uint8Array = new Uint8Array(losslessBytes);
+
+      // Only pad if strictly opted in
+      if (options.exactPadding && targetBytes && finalLosslessBytes.length < targetBytes && originalSize > targetBytes) {
+        finalLosslessBytes = alignPdfBytesToTarget(finalLosslessBytes, targetBytes);
+      }
+
+      const newSize = finalLosslessBytes.length;
+      const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
+      return {
+        blob: new Blob([finalLosslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
+        originalSize,
+        newSize,
+        savingsPercent,
+      };
     }
 
-    const newSize = finalLosslessBytes.length;
-    const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
-    return {
-      blob: new Blob([finalLosslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
-      originalSize,
-      newSize,
-      savingsPercent,
-    };
+    // If lossless mode was requested or smart mode already achieved significant savings (> 12%):
+    if (options.mode === 'lossless' || (options.mode === 'smart' && losslessBytes.length < originalSize * 0.88)) {
+      options.onProgress?.(100, 'Optimization complete!');
+      const finalLosslessBytes = new Uint8Array(losslessBytes);
+      const newSize = finalLosslessBytes.length;
+      const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
+      return {
+        blob: new Blob([finalLosslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
+        originalSize,
+        newSize,
+        savingsPercent,
+      };
+    }
   }
 
-  // If lossless mode was requested or smart mode already achieved significant savings (> 12%):
-  if (options.mode === 'lossless' || (options.mode === 'smart' && losslessBytes.length < originalSize * 0.88)) {
-    options.onProgress?.(100, 'Optimization complete!');
-    const finalLosslessBytes = new Uint8Array(losslessBytes);
-    const newSize = finalLosslessBytes.length;
-    const savingsPercent = Math.max(0, Math.round(((originalSize - newSize) / originalSize) * 100));
-    return {
-      blob: new Blob([finalLosslessBytes as unknown as BlobPart], { type: 'application/pdf' }),
-      originalSize,
-      newSize,
-      savingsPercent,
-    };
-  }
-
-  // Downsample pages and re-encode embedded media using pdfjs-dist
+  // Downsample pages and re-encode embedded media using pipelined worker & bounded memory
   const targetKbDisplay = Math.round(targetBytes / 1024);
   options.onProgress?.(
     40,
     isTargetMode ? `Calibrating resolution to hit target (${targetKbDisplay} KB)...` : 'Optimizing page resolutions...'
   );
+
+  const workerBridge = new CompressionWorkerBridge();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pdfDoc: any = null;
 
   try {
     const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
@@ -236,7 +261,8 @@ export async function compressPDF(
     }
 
     const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) });
-    const pdfDoc = await loadingTask.promise;
+    pdfDoc = await loadingTask.promise;
+    options.signal?.throwIfAborted();
     const numPages = pdfDoc.numPages;
 
     // Accurate PDF container structural overhead (approx 380 bytes per page + 1500 bytes for catalog & info)
@@ -249,8 +275,9 @@ export async function compressPDF(
     const firstPage = await pdfDoc.getPage(1);
     const firstVp = firstPage.getViewport({ scale: 1.0 });
     const pageArea = Math.max(1, firstVp.width * firstVp.height);
+    firstPage.cleanup(); // Clean up first inspection page immediately
 
-    // Fast analytical calculation of optimal scale and quality
+    // Analytical calculation of optimal scale and quality
     let activeScale: number;
     let activeQuality: number;
 
@@ -271,14 +298,35 @@ export async function compressPDF(
     // Hard ceiling on max pixel dimension (1400px gives ultra-sharp 150-200 DPI while preventing multi-megabyte canvas allocations)
     const MAX_PAGE_PIXEL_DIM = 1400;
 
-    // Reusable canvas with hardware-accelerated opaque RGB buffer ({ alpha: false }) for 2x faster encoding
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) throw new Error('Canvas 2D context unavailable');
+    // Single reusable canvas for rendering when OffscreenCanvas is unavailable
+    let reusableCanvas: HTMLCanvasElement | null = null;
+
+    // Pipelining queue: Keep at most 2 rendered pages encoding in worker while next is rendering
+    interface InFlightPage {
+      pageWidth: number;
+      pageHeight: number;
+      encodePromise: Promise<EncodeTaskResult>;
+    }
+    const inFlight: InFlightPage[] = [];
+    const CONCURRENCY = 2;
+
+    const drainOnePage = async () => {
+      const item = inFlight.shift();
+      if (!item) return;
+      const { buffer, size } = await item.encodePromise;
+      accumulatedBytes += size;
+      const embeddedImg = await newPdfDoc.embedJpg(new Uint8Array(buffer));
+      const newPage = newPdfDoc.addPage([item.pageWidth, item.pageHeight]);
+      newPage.drawImage(embeddedImg, {
+        x: 0,
+        y: 0,
+        width: item.pageWidth,
+        height: item.pageHeight,
+      });
+    };
 
     for (let i = 1; i <= numPages; i++) {
-      // Yield to browser event loop so UI progress updates instantly and smoothly
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      options.signal?.throwIfAborted();
 
       const pagePct = 42 + Math.round((i / numPages) * 52);
       options.onProgress?.(
@@ -286,7 +334,7 @@ export async function compressPDF(
         `Compressing page ${i} of ${numPages}${isTargetMode ? ` (Target: ${targetKbDisplay} KB)` : ''}...`
       );
 
-      const page = i === 1 ? firstPage : await pdfDoc.getPage(i);
+      const page = await pdfDoc.getPage(i);
       const pageOrigViewport = page.getViewport({ scale: 1.0 });
 
       // Dynamic closed-loop adjustment for remaining pages in target mode
@@ -302,52 +350,77 @@ export async function compressPDF(
       }
 
       // Constrain effective scale so neither canvas width nor height exceeds MAX_PAGE_PIXEL_DIM
-      // This prevents massive 10-25 Megapixel renders on camera scans and guarantees sub-second per-page renders
       const maxDim = Math.max(pageOrigViewport.width, pageOrigViewport.height);
       const maxAllowedScale = MAX_PAGE_PIXEL_DIM / Math.max(1, maxDim);
       const effectiveScale = Math.min(activeScale, Math.max(0.35, maxAllowedScale));
 
       const renderViewport = page.getViewport({ scale: effectiveScale });
-      canvas.width = Math.max(1, Math.floor(renderViewport.width));
-      canvas.height = Math.max(1, Math.floor(renderViewport.height));
+      const renderW = Math.max(1, Math.floor(renderViewport.width));
+      const renderH = Math.max(1, Math.floor(renderViewport.height));
 
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      let bitmap: ImageBitmap;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const renderTask = page.render({ canvasContext: ctx, canvas, viewport: renderViewport, intent: 'display' } as any);
-      await renderTask.promise;
+      if (typeof OffscreenCanvas !== 'undefined') {
+        const offscreen = new OffscreenCanvas(renderW, renderH);
+        const ctx = offscreen.getContext('2d', { alpha: false });
+        if (!ctx) throw new Error('OffscreenCanvas 2D context unavailable');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, renderW, renderH);
 
-      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (b) => {
-            if (b) resolve(b);
-            else reject(new Error('Canvas export failed'));
-          },
-          'image/jpeg',
-          activeQuality
-        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const renderTask = page.render({ canvasContext: ctx, viewport: renderViewport, intent: 'display' } as any);
+        await renderTask.promise;
+        bitmap = offscreen.transferToImageBitmap();
+      } else {
+        if (!reusableCanvas) reusableCanvas = document.createElement('canvas');
+        reusableCanvas.width = renderW;
+        reusableCanvas.height = renderH;
+        const ctx = reusableCanvas.getContext('2d', { alpha: false });
+        if (!ctx) throw new Error('Canvas 2D context unavailable');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, renderW, renderH);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const renderTask = page.render({ canvasContext: ctx, canvas: reusableCanvas, viewport: renderViewport, intent: 'display' } as any);
+        await renderTask.promise;
+        bitmap = await createImageBitmap(reusableCanvas);
+      }
+
+      // Clean up pdfjs page structures from memory immediately
+      page.cleanup();
+
+      // Dispatch async encoding off the main thread to Web Worker
+      const encodePromise = workerBridge.encodeImageBitmap(bitmap, {
+        width: renderW,
+        height: renderH,
+        quality: activeQuality,
+        mimeType: 'image/jpeg',
+        signal: options.signal,
       });
 
-      accumulatedBytes += jpegBlob.size;
-      const jpegArrayBuffer = await jpegBlob.arrayBuffer();
-      const embeddedImg = await newPdfDoc.embedJpg(new Uint8Array(jpegArrayBuffer));
-
-      const newPage = newPdfDoc.addPage([pageOrigViewport.width, pageOrigViewport.height]);
-      newPage.drawImage(embeddedImg, {
-        x: 0,
-        y: 0,
-        width: pageOrigViewport.width,
-        height: pageOrigViewport.height,
+      inFlight.push({
+        pageWidth: pageOrigViewport.width,
+        pageHeight: pageOrigViewport.height,
+        encodePromise,
       });
+
+      if (inFlight.length >= CONCURRENCY) {
+        await drainOnePage();
+      }
     }
 
+    // Drain remaining in-flight pages
+    while (inFlight.length > 0) {
+      await drainOnePage();
+    }
+
+    options.signal?.throwIfAborted();
     options.onProgress?.(98, 'Finalizing optimized PDF container...');
     const compressedBytes = await newPdfDoc.save({ useObjectStreams: true });
     let finalBytes: Uint8Array = new Uint8Array(compressedBytes);
 
-    // If targetSizeBytes was specified, calibrate alignment so the file hits the exact requested target size!
-    if (isTargetMode && targetBytes && finalBytes.length < targetBytes && originalSize > targetBytes) {
+    // Only align bytes if strictly opted in
+    if (options.exactPadding && isTargetMode && targetBytes && finalBytes.length < targetBytes && originalSize > targetBytes) {
       finalBytes = alignPdfBytesToTarget(finalBytes, targetBytes);
     }
 
@@ -361,10 +434,21 @@ export async function compressPDF(
       savingsPercent,
     };
   } catch (err: unknown) {
+    if (options.signal?.aborted) {
+      throw new DOMException('Operation aborted', 'AbortError');
+    }
     console.error('Advanced PDF raster compression error:', err);
-    // If rasterization failed, throw an informative error rather than misleading the user with 0% savings!
     const errMsg = err instanceof Error ? err.message : String(err);
     throw new Error(`PDF compression failed: ${errMsg}`);
+  } finally {
+    workerBridge.terminate();
+    if (pdfDoc) {
+      try {
+        await pdfDoc.destroy();
+      } catch (e) {
+        console.warn('PDFDoc destroy fallback:', e);
+      }
+    }
   }
 }
 
@@ -924,24 +1008,121 @@ export async function unlockPDF(file: File): Promise<Blob> {
   return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
 }
 
-// 14. GRAYSCALE PDF
-export async function grayscalePDF(file: File): Promise<Blob> {
+// 14. GRAYSCALE PDF (True monochrome/black-and-white conversion)
+export async function grayscalePDF(
+  file: File,
+  options: {
+    onProgress?: (percent: number, message: string) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<Blob> {
+  options.signal?.throwIfAborted();
   const arrayBuffer = await fileToArrayBuffer(file);
-  const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-  const pages = pdf.getPages();
-  for (const page of pages) {
-    const { width, height } = page.getSize();
-    page.drawRectangle({
-      x: 0,
-      y: 0,
-      width,
-      height,
-      color: rgb(0.1, 0.1, 0.1),
-      opacity: 0.02,
-    });
+  options.signal?.throwIfAborted();
+
+  options.onProgress?.(10, 'Initializing grayscale monochrome rendering engine...');
+
+  const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    if (typeof window !== 'undefined') {
+      pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+    } else {
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    }
   }
-  const pdfBytes = await pdf.save({ useObjectStreams: true });
-  return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pdfDoc: any = null;
+
+  try {
+    pdfDoc = await loadingTask.promise;
+    options.signal?.throwIfAborted();
+    const numPages = pdfDoc.numPages;
+    const newPdfDoc = await PDFDocument.create();
+
+    let canvas: HTMLCanvasElement | null = null;
+
+    for (let i = 1; i <= numPages; i++) {
+      options.signal?.throwIfAborted();
+      const pct = Math.round(15 + (i / numPages) * 75);
+      options.onProgress?.(pct, `Converting page ${i} of ${numPages} to true grayscale...`);
+
+      const page = await pdfDoc.getPage(i);
+      const origVp = page.getViewport({ scale: 1.0 });
+
+      // Crisp rendering at scale up to 1.75x (bounded to 2000px max dimension for memory safety)
+      const maxDim = Math.max(origVp.width, origVp.height);
+      const scale = Math.min(1.75, Math.max(1.0, 2000 / Math.max(1, maxDim)));
+      const renderVp = page.getViewport({ scale });
+
+      const w = Math.max(1, Math.floor(renderVp.width));
+      const h = Math.max(1, Math.floor(renderVp.height));
+
+      if (!canvas) canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        page.cleanup();
+        throw new Error('Canvas 2D context unavailable');
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const renderTask = page.render({ canvasContext: ctx, canvas, viewport: renderVp, intent: 'display' } as any);
+      await renderTask.promise;
+      page.cleanup();
+
+      // True pixel luminance grayscale conversion (Rec. 709)
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      const len = data.length;
+      for (let j = 0; j < len; j += 4) {
+        const gray = (0.2126 * data[j] + 0.7152 * data[j + 1] + 0.0722 * data[j + 2]) | 0;
+        data[j] = gray;
+        data[j + 1] = gray;
+        data[j + 2] = gray;
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas!.toBlob(
+          (b) => {
+            if (b) resolve(b);
+            else reject(new Error('Grayscale canvas export failed'));
+          },
+          'image/jpeg',
+          0.92
+        );
+      });
+
+      const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+      const embedded = await newPdfDoc.embedJpg(jpegBytes);
+      const newPage = newPdfDoc.addPage([origVp.width, origVp.height]);
+      newPage.drawImage(embedded, {
+        x: 0,
+        y: 0,
+        width: origVp.width,
+        height: origVp.height,
+      });
+    }
+
+    options.onProgress?.(95, 'Finalizing grayscale PDF document...');
+    const finalBytes = await newPdfDoc.save({ useObjectStreams: true });
+    return new Blob([finalBytes as unknown as BlobPart], { type: 'application/pdf' });
+  } finally {
+    if (pdfDoc) {
+      try {
+        await pdfDoc.destroy();
+      } catch (e) {
+        console.warn('PDFDoc destroy fallback:', e);
+      }
+    }
+  }
 }
 
 // 15. LOCK FILE WITH AES-256-GCM PASSWORD ENCRYPTION
@@ -1042,12 +1223,18 @@ export async function unlockFileWithPassword(file: File, password: string): Prom
 export async function pdfToImages(
   file: File,
   format: 'image/png' | 'image/jpeg' = 'image/png',
-  scale: number = 2
+  scale: number = 2,
+  onProgress?: (percent: number, message: string) => void,
+  signal?: AbortSignal
 ): Promise<{
   zipBlob: Blob;
   images: { pageNum: number; blob: Blob; url: string; name: string }[];
 }> {
+  signal?.throwIfAborted();
   const arrayBuffer = await fileToArrayBuffer(file);
+  signal?.throwIfAborted();
+
+  onProgress?.(10, 'Loading PDF document for image export...');
   const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
     if (typeof window !== 'undefined') {
@@ -1058,46 +1245,81 @@ export async function pdfToImages(
   }
 
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
-  const pdfDoc = await loadingTask.promise;
-  const numPages = pdfDoc.numPages;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pdfDoc: any = null;
 
-  const images: { pageNum: number; blob: Blob; url: string; name: string }[] = [];
-  const zip = new JSZip();
-  const baseName = file.name.replace(/\.[^/.]+$/, '');
-  const ext = format === 'image/jpeg' ? 'jpg' : 'png';
+  try {
+    pdfDoc = await loadingTask.promise;
+    signal?.throwIfAborted();
+    const numPages = pdfDoc.numPages;
 
-  for (let i = 1; i <= numPages; i++) {
-    const page = await pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale });
+    const images: { pageNum: number; blob: Blob; url: string; name: string }[] = [];
+    const zip = new JSZip();
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const ext = format === 'image/jpeg' ? 'jpg' : 'png';
 
+    // Single reusable canvas across all iterations to prevent memory thrashing
     const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) continue;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (page.render({ canvasContext: ctx, viewport } as any) as any).promise;
+    for (let i = 1; i <= numPages; i++) {
+      signal?.throwIfAborted();
+      const pct = Math.round(15 + (i / numPages) * 75);
+      onProgress?.(pct, `Exporting page ${i} of ${numPages} as ${ext.toUpperCase()}...`);
 
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => {
-          if (b) resolve(b);
-          else reject(new Error('Canvas export failed'));
-        },
-        format,
-        0.92
-      );
+      const page = await pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale });
+
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        page.cleanup();
+        continue;
+      }
+
+      if (format === 'image/jpeg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const renderTask = page.render({ canvasContext: ctx, canvas, viewport } as any);
+      await renderTask.promise;
+      page.cleanup();
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => {
+            if (b) resolve(b);
+            else reject(new Error('Canvas export failed'));
+          },
+          format,
+          0.92
+        );
+      });
+
+      const pageFileName = `${baseName}-page-${i}.${ext}`;
+      const url = URL.createObjectURL(blob);
+      images.push({ pageNum: i, blob, url, name: pageFileName });
+
+      const imgBuffer = await blob.arrayBuffer();
+      // Store already-compressed images directly without redundant DEFLATE compression
+      zip.file(pageFileName, imgBuffer, { compression: 'STORE' });
+    }
+
+    onProgress?.(95, 'Packaging images into ZIP archive...');
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'STORE',
     });
-
-    const pageFileName = `${baseName}-page-${i}.${ext}`;
-    const url = URL.createObjectURL(blob);
-    images.push({ pageNum: i, blob, url, name: pageFileName });
-
-    const imgBuffer = await blob.arrayBuffer();
-    zip.file(pageFileName, imgBuffer);
+    return { zipBlob, images };
+  } finally {
+    if (pdfDoc) {
+      try {
+        await pdfDoc.destroy();
+      } catch (e) {
+        console.warn('PDFDoc destroy fallback:', e);
+      }
+    }
   }
-
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
-  return { zipBlob, images };
 }

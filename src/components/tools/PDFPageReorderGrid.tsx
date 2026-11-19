@@ -113,6 +113,40 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
 
   const abortControllerRef = useRef<{ aborted: boolean }>({ aborted: false });
 
+  // Track created custom device image URLs to prevent memory leaks
+  const customImageUrlsRef = useRef<Set<string>>(new Set());
+  const registerCustomImageUrl = useCallback((url: string) => {
+    customImageUrlsRef.current.add(url);
+    return url;
+  }, []);
+  const revokeCustomImageUrl = useCallback((url: string | null | undefined) => {
+    if (url && customImageUrlsRef.current.has(url)) {
+      URL.revokeObjectURL(url);
+      customImageUrlsRef.current.delete(url);
+    }
+  }, []);
+  const revokeAllCustomImageUrls = useCallback(() => {
+    for (const url of customImageUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    customImageUrlsRef.current.clear();
+  }, []);
+
+  // Cleanup all custom blob URLs and PDF document on unmount
+  useEffect(() => {
+    return () => {
+      revokeAllCustomImageUrls();
+      if (pdfDocRef.current) {
+        try {
+          pdfDocRef.current.destroy();
+        } catch (e) {
+          console.warn('PDFDoc destroy fallback:', e);
+        }
+        pdfDocRef.current = null;
+      }
+    };
+  }, [revokeAllCustomImageUrls]);
+
   // Stable callback to notify parent
   const notifyParent = useCallback((currentPages: PageReorderItem[]) => {
     const activePages = currentPages.filter((p) => !p.isExcluded);
@@ -152,11 +186,20 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
 
   // Main file loader effect - ONLY triggers when `file` changes!
   useEffect(() => {
+    revokeAllCustomImageUrls();
+    if (pdfDocRef.current) {
+      try {
+        pdfDocRef.current.destroy();
+      } catch (e) {
+        console.warn('PDFDoc destroy fallback:', e);
+      }
+      pdfDocRef.current = null;
+    }
+
     if (!file) {
       setPages([]);
       setIsLoading(false);
       setError(null);
-      pdfDocRef.current = null;
       return;
     }
 
@@ -220,8 +263,10 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
         for (let i = 1; i <= numPages; i++) {
           if (currentAbort.aborted || !isMounted) break;
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let page: any = null;
           try {
-            const page = await pdfDoc.getPage(i);
+            page = await pdfDoc.getPage(i);
             const unscaledViewport = page.getViewport({ scale: 1.0 });
 
             // Ultra-lightweight thumbnail target width: 140px (~10ms render time)
@@ -270,6 +315,10 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
             }
           } catch (renderErr) {
             console.warn(`Render fallback for page ${i}:`, renderErr);
+          } finally {
+            if (page && typeof page.cleanup === 'function') {
+              page.cleanup();
+            }
           }
 
           setLoadProgress({ current: i, total: numPages });
@@ -294,8 +343,16 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     return () => {
       isMounted = false;
       currentAbort.aborted = true;
+      if (pdfDocRef.current) {
+        try {
+          pdfDocRef.current.destroy();
+        } catch {
+          // ignore
+        }
+        pdfDocRef.current = null;
+      }
     };
-  }, [file, notifyParent]);
+  }, [file, notifyParent, revokeAllCustomImageUrls]);
 
   // High-Res Zoom Modal Render
   const openZoomModal = async (item: PageReorderItem) => {
@@ -351,7 +408,13 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     const pickedFile = e.target.files?.[0];
     if (!pickedFile || targetReplaceIndex === null) return;
 
-    const blobUrl = URL.createObjectURL(pickedFile);
+    // Revoke previous blob URL if replacing an already-replaced page
+    const existingPage = pages[targetReplaceIndex];
+    if (existingPage?.customImageFile && existingPage.previewUrl?.startsWith('blob:')) {
+      revokeCustomImageUrl(existingPage.previewUrl);
+    }
+
+    const blobUrl = registerCustomImageUrl(URL.createObjectURL(pickedFile));
 
     setPages((prev) => {
       const updated = prev.map((p, idx) => {
@@ -387,6 +450,11 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
 
   // Revert custom image back to original PDF page
   const revertToOriginalPage = (index: number) => {
+    const existingPage = pages[index];
+    if (existingPage?.previewUrl?.startsWith('blob:')) {
+      revokeCustomImageUrl(existingPage.previewUrl);
+    }
+
     setPages((prev) => {
       const updated = prev.map((p, idx) => {
         if (idx !== index) return p;
@@ -423,7 +491,7 @@ export const PDFPageReorderGrid: React.FC<PDFPageReorderGridProps> = ({
     if (selectedFiles.length === 0) return;
 
     const newItems: PageReorderItem[] = selectedFiles.map((imgFile, idx) => {
-      const blobUrl = URL.createObjectURL(imgFile);
+      const blobUrl = registerCustomImageUrl(URL.createObjectURL(imgFile));
       return {
         id: `page-device-img-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
         originalIndex: -1,

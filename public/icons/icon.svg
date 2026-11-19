@@ -1,68 +1,97 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Deep Obsidian Radial Space Background -->
-    <radialGradient id="spaceBg" cx="50%" cy="45%" r="65%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="45%" stop-color="#080c14" />
-      <stop offset="85%" stop-color="#04060c" />
-      <stop offset="100%" stop-color="#020307" />
+    <!-- Background Luxury Deep Obsidian Radial Glass -->
+    <radialGradient id="obsidianGlass" cx="45%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#131b2e" />
+      <stop offset="40%" stop-color="#0a0f1d" />
+      <stop offset="80%" stop-color="#040711" />
+      <stop offset="100%" stop-color="#020308" />
     </radialGradient>
 
-    <!-- Ambient Core Plasma Halo -->
-    <radialGradient id="plasmaGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.32" />
-      <stop offset="40%" stop-color="#6366f1" stop-opacity="0.22" />
-      <stop offset="70%" stop-color="#ec4899" stop-opacity="0.12" />
-      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    <!-- Celestial Quantum Plasma Glow -->
+    <radialGradient id="quantumGlow" cx="50%" cy="48%" r="48%">
+      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.22" />
+      <stop offset="35%" stop-color="#6366f1" stop-opacity="0.18" />
+      <stop offset="70%" stop-color="#ec4899" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
     </radialGradient>
 
-    <!-- Outer Squircle Ring Border -->
-    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Outer Chamfered Luxury Titanium / Iridescent Border -->
+    <linearGradient id="titaniumRim" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="30%" stop-color="#6366f1" />
-      <stop offset="70%" stop-color="#ec4899" />
+      <stop offset="25%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#c084fc" />
+      <stop offset="75%" stop-color="#f43f5e" />
       <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <!-- Top Laser Blade (Cyan -> Electric Blue) -->
-    <linearGradient id="bladeTop" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="50%" stop-color="#06b6d4" />
-      <stop offset="100%" stop-color="#2563eb" />
+    <!-- Subtle Inner Bevel Shadow for Glass Inset Depth -->
+    <linearGradient id="innerBevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25" />
+      <stop offset="15%" stop-color="#ffffff" stop-opacity="0.05" />
+      <stop offset="85%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.6" />
     </linearGradient>
 
-    <!-- Left Anvil Spine (Electric Violet -> Indigo) -->
-    <linearGradient id="pillarLeft" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#a5b4fc" />
-      <stop offset="30%" stop-color="#818cf8" />
-      <stop offset="70%" stop-color="#6366f1" />
+    <!-- Vertical Anvil Spine (Forged Cyber-Titanium) -->
+    <linearGradient id="spineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c7d2fe" />
+      <stop offset="20%" stop-color="#818cf8" />
+      <stop offset="60%" stop-color="#4f46e5" />
       <stop offset="100%" stop-color="#312e81" />
     </linearGradient>
 
-    <!-- Forge Plasma Crossbar (Hot Pink -> Amber Gold) -->
-    <linearGradient id="forgeHeat" x1="0%" y1="0%" x2="100%" y2="0%">
+    <!-- Top Laser Aerodynamic Origami Blade -->
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="30%" stop-color="#00f0ff" />
+      <stop offset="70%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+
+    <!-- Top Specular Chrome Flare -->
+    <linearGradient id="topSpecular" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+      <stop offset="40%" stop-color="#e0f2fe" stop-opacity="0.5" />
+      <stop offset="80%" stop-color="#38bdf8" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Active Fusion Forge Crossbar (Hot Hyper-Plasma) -->
+    <linearGradient id="forgePlasma" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#f43f5e" />
-      <stop offset="50%" stop-color="#ec4899" />
-      <stop offset="100%" stop-color="#fbbf24" />
+      <stop offset="40%" stop-color="#fb7185" />
+      <stop offset="75%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#facc15" />
     </linearGradient>
 
-    <!-- 3D Isometric Crease Shadow -->
-    <linearGradient id="creaseShadow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0284c7" />
-      <stop offset="100%" stop-color="#090d16" />
+    <!-- Middle Blade Specular Edge -->
+    <linearGradient id="midSpecular" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7" />
+      <stop offset="60%" stop-color="#fef08a" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
     </linearGradient>
 
-    <!-- Core Spark Glow Filter -->
-    <filter id="intenseGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+    <!-- 3D Bevel Crease Facet Shadow -->
+    <linearGradient id="creaseFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="40%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Stellar Nova Beacon Filter -->
+    <filter id="stellarGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="20" result="blur2" />
       <feMerge>
-        <feMergeNode in="blur" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
 
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="24" result="blur" />
+    <!-- Core Monogram Ambient Glow -->
+    <filter id="monogramAura" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
@@ -70,75 +99,109 @@
     </filter>
   </defs>
 
-  <!-- 1. FULL BLEED BACKGROUND (Ensures 100% Android Maskable compliance) -->
-  <rect x="0" y="0" width="512" height="512" fill="url(#spaceBg)" />
-
-  <!-- 2. AMBIENT RADIANT CORE PLASMA -->
-  <circle cx="256" cy="256" r="230" fill="url(#plasmaGlow)" />
-
-  <!-- 3. CYBERNETIC RADAR / ORBITAL DEPTH RINGS (Subtle tech blueprint) -->
-  <circle cx="256" cy="256" r="215" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="2" stroke-dasharray="8 12" />
-  <circle cx="256" cy="256" r="175" fill="none" stroke="rgba(6, 182, 212, 0.08)" stroke-width="1.5" />
-  <circle cx="256" cy="256" r="125" fill="none" stroke="rgba(99, 102, 241, 0.06)" stroke-width="1" stroke-dasharray="4 6" />
-
-  <!-- 4. INNER 3D SHIELD GLOW (Safe-zone framing) -->
+  <!-- 1. BASE SQUIRCLE CONTAINER (Precision 464x464 with R=144) -->
   <rect
-    x="32"
-    y="32"
-    width="448"
-    height="448"
-    rx="124"
+    x="24"
+    y="24"
+    width="464"
+    height="464"
+    rx="144"
+    fill="url(#obsidianGlass)"
+    stroke="url(#titaniumRim)"
+    stroke-width="12"
+  />
+
+  <!-- 2. LUXURY INNER GLASS REFLECTION RIM -->
+  <rect
+    x="30"
+    y="30"
+    width="452"
+    height="452"
+    rx="138"
     fill="none"
-    stroke="url(#shieldBorder)"
-    stroke-width="5"
-    opacity="0.45"
+    stroke="url(#innerBevelLight)"
+    stroke-width="2.5"
+    opacity="0.85"
   />
 
-  <!-- 5. --- 3D FORGED 'F' MONOGRAM RIBBONS --- -->
+  <!-- 3. QUANTUM AMBIENT CORE PLASMA -->
+  <circle cx="256" cy="256" r="205" fill="url(#quantumGlow)" />
 
-  <!-- Left Anvil Spine -->
+  <!-- 4. SUBTLE PRECISION OPTICAL BLUEPRINT RINGS -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="rgba(56, 189, 248, 0.08)" stroke-width="1.5" stroke-dasharray="4 8" />
+  <circle cx="256" cy="256" r="135" fill="none" stroke="rgba(129, 140, 248, 0.06)" stroke-width="1" />
+  <circle cx="256" cy="256" r="80" fill="none" stroke="rgba(236, 72, 153, 0.05)" stroke-width="1" stroke-dasharray="2 6" />
+
+  <!-- Center Crosshairs Reticle -->
   <path
-    d="M 124 140 C 124 124 136 112 152 112 H 198 V 376 C 198 392 186 404 170 404 H 152 C 136 404 124 392 124 376 Z"
-    fill="url(#pillarLeft)"
+    d="M 72 256 H 104 M 408 256 H 440 M 256 72 V 104 M 256 408 V 440"
+    stroke="rgba(255, 255, 255, 0.12)"
+    stroke-width="2"
+    stroke-linecap="round"
   />
 
-  <!-- Top Laser Origami Arm -->
-  <path
-    d="M 186 112 H 360 C 375 112 386 126 380 140 L 350 206 C 345 216 335 222 324 222 H 186 V 112 Z"
-    fill="url(#bladeTop)"
-  />
-
-  <!-- Top Specular Chrome Bevel Light -->
-  <path
-    d="M 194 120 H 356 L 340 152 H 194 Z"
-    fill="rgba(255, 255, 255, 0.45)"
-  />
-
-  <!-- Middle Forge Heat Plasma Bar -->
-  <path
-    d="M 186 244 H 304 C 318 244 329 258 323 272 L 302 318 C 297 328 287 334 276 334 H 186 V 244 Z"
-    fill="url(#forgeHeat)"
-    filter="url(#softGlow)"
-  />
-  <path
-    d="M 186 244 H 304 C 318 244 329 258 323 272 L 302 318 C 297 328 287 334 276 334 H 186 V 244 Z"
-    fill="url(#forgeHeat)"
-  />
-
-  <!-- Isometric Shadow Fold -->
-  <path
-    d="M 186 112 L 198 126 V 376 L 186 404 Z"
-    fill="url(#creaseShadow)"
-    opacity="0.8"
-  />
-
-  <!-- 6. HYPER-SPARK DIAMOND (Forge Core Nova) -->
-  <g filter="url(#intenseGlow)">
-    <!-- 4-point radiant star -->
+  <!-- 5. 3D QUANTUM-FORGED 'F' MONOGRAM -->
+  <g filter="url(#monogramAura)">
+    <!-- Anvil Spine -->
     <path
-      d="M 360 84 Q 360 112 388 112 Q 360 112 360 140 Q 360 112 332 112 Q 360 112 360 84 Z"
-      fill="#e0f2fe"
+      d="M 134 136 C 134 120 146 108 162 108 H 206 V 376 C 206 392 194 404 178 404 H 162 C 146 404 134 392 134 376 Z"
+      fill="url(#spineGrad)"
     />
-    <circle cx="360" cy="112" r="6" fill="#ffffff" />
+
+    <!-- Spine Specular Light Edge -->
+    <path
+      d="M 136 140 C 136 124 146 114 160 114 H 168 V 398 H 160 C 146 398 136 388 136 374 Z"
+      fill="rgba(255, 255, 255, 0.22)"
+    />
+
+    <!-- Top Aerodynamic Laser Origami Arm -->
+    <path
+      d="M 182 108 H 368 C 382 108 392 122 386 136 L 358 198 C 353 208 343 214 332 214 H 182 V 108 Z"
+      fill="url(#bladeGrad)"
+    />
+
+    <!-- Top Laser Arm - Polished Mirror Bevel -->
+    <path
+      d="M 186 114 H 364 C 372 114 378 122 374 130 L 360 156 C 357 162 351 166 344 166 H 186 V 114 Z"
+      fill="url(#topSpecular)"
+    />
+
+    <!-- Middle Fusion Forge Plasma Crossbar -->
+    <path
+      d="M 182 238 H 316 C 330 238 340 252 334 266 L 310 314 C 305 324 295 330 284 330 H 182 V 238 Z"
+      fill="url(#forgePlasma)"
+    />
+
+    <!-- Middle Bar - Specular Upper Edge -->
+    <path
+      d="M 186 242 H 312 L 298 270 H 186 V 242 Z"
+      fill="url(#midSpecular)"
+    />
+
+    <!-- Isometric 3D Shadow Fold -->
+    <path
+      d="M 182 108 L 206 132 V 380 L 182 404 Z"
+      fill="url(#creaseFacet)"
+      opacity="0.85"
+    />
+    <path
+      d="M 182 108 L 186 112 V 400 L 182 404 Z"
+      fill="rgba(255, 255, 255, 0.35)"
+    />
+  </g>
+
+  <!-- 6. HYPER-STELLAR BEACON NOVA -->
+  <g filter="url(#stellarGlow)">
+    <path
+      d="M 368 82 Q 368 118 404 118 Q 368 118 368 154 Q 368 118 332 118 Q 368 118 368 82 Z"
+      fill="#ffffff"
+    />
+    <path
+      d="M 368 96 Q 368 118 390 118 Q 368 118 368 140 Q 368 118 346 118 Q 368 118 368 96 Z"
+      fill="#a5f3fc"
+    />
+    <circle cx="368" cy="118" r="6" fill="#ffffff" />
+    <circle cx="368" cy="118" r="12" fill="#38bdf8" opacity="0.4" />
+    <line x1="320" y1="142" x2="416" y2="94" stroke="#e0f2fe" stroke-width="1.5" stroke-linecap="round" opacity="0.85" />
   </g>
 </svg>

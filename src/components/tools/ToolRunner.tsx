@@ -31,7 +31,6 @@ interface ToolRunnerProps {
 }
 
 const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
-
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<'idle' | 'processing' | 'done' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
@@ -39,6 +38,76 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProcessedResult | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [paletteColors, setPaletteColors] = useState<ImageEngine.PaletteColor[]>([]);
+  const [hashes, setHashes] = useState<{ sha256: string; sha512: string; sha1: string; size: number } | null>(null);
+  const [inspection, setInspection] = useState<CryptoEngine.FileInspectionResult | null>(null);
+
+  // Track all created Object URLs to prevent memory leaks
+  const activeObjectUrlsRef = React.useRef<Set<string>>(new Set());
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  const registerObjectUrl = React.useCallback((url: string) => {
+    activeObjectUrlsRef.current.add(url);
+    return url;
+  }, []);
+
+  const revokeAllObjectUrls = React.useCallback(() => {
+    for (const url of activeObjectUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    activeObjectUrlsRef.current.clear();
+  }, []);
+
+  const handleReset = React.useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    revokeAllObjectUrls();
+    setStatus('idle');
+    setResult(null);
+    setError(null);
+    setProgress(0);
+    setFiles([]);
+    setPaletteColors([]);
+    setHashes(null);
+    setInspection(null);
+  }, [revokeAllObjectUrls]);
+
+  const handleCancel = React.useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setStatus('idle');
+    setProgress(0);
+    setMessage('');
+  }, []);
+
+  const handleFilesChange = React.useCallback((newFiles: File[]) => {
+    setFiles(newFiles);
+    if (status === 'error' || status === 'done') {
+      setError(null);
+      setResult(null);
+      setStatus('idle');
+      revokeAllObjectUrls();
+    }
+  }, [status, revokeAllObjectUrls]);
+
+  // Clean up object URLs and abort pending tasks on unmount
+  useEffect(() => {
+    return () => {
+      revokeAllObjectUrls();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [revokeAllObjectUrls]);
+
+  // Reset state and revoke object URLs when switching tools
+  useEffect(() => {
+    handleReset();
+  }, [tool.id, handleReset]);
 
   // Tool Specific States
   // PDF
@@ -104,7 +173,6 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [blurMode, setBlurMode] = useState<'blur' | 'pixelate'>('blur');
   const [blurIntensity, setBlurIntensity] = useState(12);
   const [svgScale] = useState(2);
-  const [paletteColors, setPaletteColors] = useState<ImageEngine.PaletteColor[]>([]);
   const [base64Output, setBase64Output] = useState('');
 
   // Documents
@@ -129,8 +197,6 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
   const [qrDark, setQrDark] = useState('#000000');
   const [qrLight, setQrLight] = useState('#ffffff');
   const [qrPreview, setQrPreview] = useState<{ png: string; svg: string } | null>(null);
-  const [hashes, setHashes] = useState<{ sha256: string; sha512: string; sha1: string; size: number } | null>(null);
-  const [inspection, setInspection] = useState<CryptoEngine.FileInspectionResult | null>(null);
   const [passLength, setPassLength] = useState(20);
   const [passUpper, setPassUpper] = useState(true);
   const [passLower, setPassLower] = useState(true);
@@ -176,6 +242,14 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
 
   const handleProcess = async () => {
     try {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const signal = controller.signal;
+
+      revokeAllObjectUrls();
       setError(null);
       setStatus('processing');
       setProgress(25);
@@ -216,6 +290,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
             mode: compressMode === 'quality' ? 'quality' : 'target',
             targetSizeBytes: targetBytes,
             quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
+            signal,
             onProgress: (pct, msg) => {
               setProgress(pct);
               setMessage(msg);
@@ -226,16 +301,24 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
-            setMessage(`Compressing PDF ${i + 1} of ${files.length} to target ~${Math.round((targetBytes || 1000 * 1024) / 1024)} KB...`);
-            setProgress(Math.round(((i + 0.1) / files.length) * 100));
             const compRes = await PDFEngine.compressPDF(f, {
               mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
               quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
+              signal,
+              onProgress: (filePct, fileMsg) => {
+                const basePct = Math.round((i / files.length) * 90);
+                const fileChunk = (1 / files.length) * 90;
+                const overallPct = Math.round(basePct + (filePct / 100) * fileChunk);
+                setProgress(overallPct);
+                setMessage(`[${i + 1}/${files.length}] ${f.name}: ${fileMsg}`);
+              },
             });
             const outName = `compressed-${f.name}`;
-            processed.push({ name: outName, blob: compRes.blob, url: URL.createObjectURL(compRes.blob), size: compRes.blob.size });
+            const url = registerObjectUrl(URL.createObjectURL(compRes.blob));
+            processed.push({ name: outName, blob: compRes.blob, url, size: compRes.blob.size });
           }
           setMessage('Packaging compressed PDFs into ZIP archive...');
           setProgress(95);
@@ -254,12 +337,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Rotating PDF ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await PDFEngine.rotatePDF(f, rotateDeg, rotatePageSel);
             const outName = `rotated-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging rotated PDFs into ZIP...');
           setProgress(95);
@@ -282,6 +366,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Watermarking PDF ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
@@ -291,7 +376,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               rotation: watermarkRotation,
             });
             const outName = `watermarked-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging watermarked PDFs into ZIP...');
           setProgress(95);
@@ -313,6 +398,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Stamping page numbers ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
@@ -321,7 +407,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               format: pageNumberFormat,
             });
             const outName = `numbered-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging numbered PDFs into ZIP...');
           setProgress(95);
@@ -375,16 +461,19 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           setMessage('Encrypting file with AES-256-GCM and PBKDF2 key derivation...');
           setProgress(60);
           outBlob = await PDFEngine.lockFileWithPassword(files[0], pdfPassword);
-          outFileName = `protected-${files[0].name}`;
+          const baseName = files[0].name.replace(/\.fileforge$/i, '');
+          outFileName = `protected-${baseName}.fileforge`;
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Protecting PDF ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await PDFEngine.lockFileWithPassword(f, pdfPassword);
-            const outName = `protected-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            const baseName = f.name.replace(/\.fileforge$/i, '');
+            const outName = `protected-${baseName}.fileforge`;
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging protected PDFs into ZIP...');
           setProgress(95);
@@ -403,18 +492,22 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
           } else {
             outBlob = await PDFEngine.unlockPDF(files[0]);
           }
-          outFileName = `unlocked-${files[0].name}`;
+          let cleanName = files[0].name.replace(/^protected-/, 'unlocked-').replace(/\.(fileforge|enc)$/i, '');
+          if (!cleanName.toLowerCase().endsWith('.pdf')) cleanName += '.pdf';
+          outFileName = cleanName;
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Unlocking PDF ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = pdfPassword
               ? await PDFEngine.unlockFileWithPassword(f, pdfPassword)
               : await PDFEngine.unlockPDF(f);
-            const outName = `unlocked-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            let cleanName = f.name.replace(/^protected-/, 'unlocked-').replace(/\.(fileforge|enc)$/i, '');
+            if (!cleanName.toLowerCase().endsWith('.pdf')) cleanName += '.pdf';
+            processed.push({ name: cleanName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging unlocked PDFs into ZIP...');
           setProgress(95);
@@ -439,27 +532,45 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
       } else if (tool.id === 'pdf-to-images') {
         if (!files[0]) throw new Error('Please select a PDF file to convert.');
         setMessage('Rendering PDF pages onto high-density canvas...');
-        setProgress(50);
-        const imgRes = await PDFEngine.pdfToImages(files[0], pdfToImgFormat, pdfToImgDpi);
+        setProgress(30);
+        const imgRes = await PDFEngine.pdfToImages(files[0], pdfToImgFormat, pdfToImgDpi, (pct, msg) => {
+          setProgress(pct);
+          setMessage(msg);
+        }, signal);
         outBlob = imgRes.zipBlob;
         outFileName = `${files[0].name.replace(/\.[^/.]+$/, '')}-pages.zip`;
+        imgRes.images.forEach((img) => registerObjectUrl(img.url));
         additionalFiles = imgRes.images;
       } else if (tool.id === 'grayscale-pdf') {
         if (files.length === 0) throw new Error('Please select at least one PDF file.');
         if (files.length === 1) {
           setMessage('Converting color channels to grayscale monochrome...');
-          setProgress(60);
-          outBlob = await PDFEngine.grayscalePDF(files[0]);
+          setProgress(30);
+          outBlob = await PDFEngine.grayscalePDF(files[0], {
+            onProgress: (pct, msg) => {
+              setProgress(pct);
+              setMessage(msg);
+            },
+            signal,
+          });
           outFileName = `grayscale-${files[0].name}`;
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
-            setMessage(`Converting to grayscale ${i + 1} of ${files.length}: ${f.name}...`);
-            setProgress(Math.round(((i + 0.5) / files.length) * 100));
-            const b = await PDFEngine.grayscalePDF(f);
+            const b = await PDFEngine.grayscalePDF(f, {
+              onProgress: (filePct, fileMsg) => {
+                const basePct = Math.round((i / files.length) * 90);
+                const fileChunk = (1 / files.length) * 90;
+                const overallPct = Math.round(basePct + (filePct / 100) * fileChunk);
+                setProgress(overallPct);
+                setMessage(`[${i + 1}/${files.length}] ${f.name}: ${fileMsg}`);
+              },
+              signal,
+            });
             const outName = `grayscale-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging grayscale PDFs into ZIP...');
           setProgress(95);
@@ -485,12 +596,14 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
             mode: compressMode === 'quality' ? 'quality' : 'target',
             targetSizeBytes: targetBytes,
             quality: imgQuality / 100,
+            signal,
           });
           outBlob = res.blob;
           outFileName = `compressed-${files[0].name.replace(/\.[^/.]+$/, '')}.webp`;
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Compressing image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
@@ -498,9 +611,10 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
               quality: imgQuality / 100,
+              signal,
             });
             const outName = `compressed-${f.name.replace(/\.[^/.]+$/, '')}.webp`;
-            processed.push({ name: outName, blob: res.blob, url: URL.createObjectURL(res.blob), size: res.blob.size });
+            processed.push({ name: outName, blob: res.blob, url: registerObjectUrl(URL.createObjectURL(res.blob)), size: res.blob.size });
           }
           setMessage('Packaging compressed images into ZIP...');
           setProgress(95);
@@ -520,12 +634,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Converting image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await ImageEngine.convertImageFormat(f, targetFormat, imgQuality / 100);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.${ext}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging converted images into ZIP...');
           setProgress(95);
@@ -549,6 +664,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal.throwIfAborted();
             const f = files[i];
             setMessage(`Resizing image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
@@ -558,7 +674,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               height: resizeMode === 'exact' ? resizeHeight : undefined,
             });
             const outName = `resized-${f.name}`;
-            processed.push({ name: outName, blob: res.blob, url: URL.createObjectURL(res.blob), size: res.blob.size });
+            processed.push({ name: outName, blob: res.blob, url: registerObjectUrl(URL.createObjectURL(res.blob)), size: res.blob.size });
           }
           setMessage('Packaging resized images into ZIP...');
           setProgress(95);
@@ -629,6 +745,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Rotating image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
@@ -638,7 +755,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               flipV,
             });
             const outName = `rotated-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging rotated images into ZIP...');
           setProgress(95);
@@ -657,12 +774,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Applying filter to image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await ImageEngine.applyImageFilter(f, filterType);
             const outName = `filtered-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging filtered images into ZIP...');
           setProgress(95);
@@ -681,12 +799,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Blurring image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await ImageEngine.blurPixelateImage(f, blurMode, blurIntensity);
             const outName = `blurred-${f.name}`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging blurred images into ZIP...');
           setProgress(95);
@@ -716,13 +835,14 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Encoding image ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b64 = await ImageEngine.fileToBase64(f);
             const b = new Blob([b64], { type: 'text/plain' });
             const outName = `${f.name}.base64.txt`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging base64 files into ZIP...');
           setProgress(95);
@@ -741,12 +861,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Rasterizing SVG ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await ImageEngine.svgToPng(f, svgScale);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}@${svgScale}x.png`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging rasterized PNGs into ZIP...');
           setProgress(95);
@@ -768,12 +889,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Converting PowerPoint ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await DocEngine.pptxToPdf(f);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.pdf`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging converted PDFs into ZIP...');
           setProgress(95);
@@ -792,12 +914,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Converting Word doc ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await DocEngine.docxToPdf(f);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.pdf`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging converted PDFs into ZIP...');
           setProgress(95);
@@ -816,12 +939,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Converting spreadsheet ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await DocEngine.excelToPdf(f);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.pdf`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging converted PDFs into ZIP...');
           setProgress(95);
@@ -840,12 +964,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Converting CSV ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await DocEngine.csvToExcel(f);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.xlsx`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging Excel workbooks into ZIP...');
           setProgress(95);
@@ -864,12 +989,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         } else {
           const processed: { name: string; blob: Blob; url: string; size: number }[] = [];
           for (let i = 0; i < files.length; i++) {
+            signal?.throwIfAborted();
             const f = files[i];
             setMessage(`Converting Excel ${i + 1} of ${files.length}: ${f.name}...`);
             setProgress(Math.round(((i + 0.5) / files.length) * 100));
             const b = await DocEngine.excelToCsv(f);
             const outName = `${f.name.replace(/\.[^/.]+$/, '')}.csv`;
-            processed.push({ name: outName, blob: b, url: URL.createObjectURL(b), size: b.size });
+            processed.push({ name: outName, blob: b, url: registerObjectUrl(URL.createObjectURL(b)), size: b.size });
           }
           setMessage('Packaging CSV files into ZIP...');
           setProgress(95);
@@ -909,6 +1035,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
               quality: compressMode === 'quality' ? imgQuality / 100 : undefined,
+              signal,
               onProgress: (p, msg) => {
                 setProgress(p);
                 setMessage(msg);
@@ -922,6 +1049,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
               mode: compressMode === 'quality' ? 'quality' : 'target',
               targetSizeBytes: targetBytes,
               quality: imgQuality / 100,
+              signal,
             });
             outBlob = comp.blob;
             outFileName = `compressed-${f.name.replace(/\.[^/.]+$/, '')}.webp`;
@@ -955,6 +1083,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
         setProgress(60);
         const extracted = await ArchiveEngine.extractAllFromZip(files[0]);
         if (extracted.length === 0) throw new Error('ZIP archive is empty or could not be read.');
+        extracted.forEach((item) => registerObjectUrl(item.url));
         additionalFiles = extracted;
         // The first extracted file is the main result
         outBlob = extracted[0].blob;
@@ -1002,7 +1131,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
       setProgress(100);
       setMessage('Done!');
 
-      const downloadUrl = URL.createObjectURL(outBlob);
+      const downloadUrl = registerObjectUrl(URL.createObjectURL(outBlob));
       const isImage = outBlob.type.startsWith('image/');
       const isPdf = outBlob.type === 'application/pdf';
 
@@ -1019,21 +1148,22 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
 
       setStatus('done');
     } catch (err: unknown) {
+      if (
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError') ||
+        abortControllerRef.current?.signal.aborted
+      ) {
+        setStatus('idle');
+        setProgress(0);
+        setMessage('');
+        return;
+      }
       console.error(err);
       setStatus('error');
       setError(err instanceof Error ? err.message : 'An error occurred during processing.');
+    } finally {
+      abortControllerRef.current = null;
     }
-  };
-
-  const handleReset = () => {
-    setStatus('idle');
-    setResult(null);
-    setError(null);
-    setProgress(0);
-    setFiles([]);
-    setPaletteColors([]);
-    setHashes(null);
-    setInspection(null);
   };
 
   return (
@@ -1057,7 +1187,13 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
       {/* Main Interactive Workstation */}
       <div className="glass-panel rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl relative">
         {/* State 1: In Progress */}
-        {status === 'processing' && <ProcessingState progress={progress} message={message} />}
+        {status === 'processing' && (
+          <ProcessingState
+            progress={progress}
+            message={message}
+            onCancel={handleCancel}
+          />
+        )}
 
         {/* State 2: Result Ready */}
         {status === 'done' && result && (
@@ -1205,7 +1341,7 @@ const StandardToolRunner: React.FC<ToolRunnerProps> = ({ tool }) => {
             {tool.maxFiles > 0 && (
               <DropZone
                 files={files}
-                onFilesChange={setFiles}
+                onFilesChange={handleFilesChange}
                 accept={tool.accept}
                 maxFiles={tool.maxFiles}
                 label={`Upload ${tool.name} file${tool.maxFiles > 1 ? 's' : ''}`}

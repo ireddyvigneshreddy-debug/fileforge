@@ -1,0 +1,122 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="spaceBg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="45%" stop-color="#080c14" />
+      <stop offset="85%" stop-color="#04060c" />
+      <stop offset="100%" stop-color="#020307" />
+    </radialGradient>
+
+    <radialGradient id="quantumGlow" cx="50%" cy="48%" r="48%">
+      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.35" />
+      <stop offset="35%" stop-color="#6366f1" stop-opacity="0.22" />
+      <stop offset="70%" stop-color="#ec4899" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="titaniumRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="25%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#c084fc" />
+      <stop offset="75%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <linearGradient id="spineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c7d2fe" />
+      <stop offset="20%" stop-color="#818cf8" />
+      <stop offset="60%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#312e81" />
+    </linearGradient>
+
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="30%" stop-color="#00f0ff" />
+      <stop offset="70%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+
+    <linearGradient id="topSpecular" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+      <stop offset="40%" stop-color="#e0f2fe" stop-opacity="0.5" />
+      <stop offset="80%" stop-color="#38bdf8" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="forgePlasma" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e" />
+      <stop offset="40%" stop-color="#fb7185" />
+      <stop offset="75%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#facc15" />
+    </linearGradient>
+
+    <linearGradient id="midSpecular" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7" />
+      <stop offset="60%" stop-color="#fef08a" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="creaseFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="40%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <filter id="stellarGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="20" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="monogramAura" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#spaceBg)" />
+  <circle cx="256" cy="256" r="230" fill="url(#quantumGlow)" />
+
+  <rect
+    x="48"
+    y="48"
+    width="416"
+    height="416"
+    rx="128"
+    fill="#070b14"
+    stroke="url(#titaniumRim)"
+    stroke-width="8"
+    opacity="0.8"
+  />
+
+  <g transform="translate(256, 256) scale(0.92) translate(-256, -256)">
+    <circle cx="256" cy="256" r="190" fill="none" stroke="rgba(56, 189, 248, 0.08)" stroke-width="1.5" stroke-dasharray="4 8" />
+    <circle cx="256" cy="256" r="135" fill="none" stroke="rgba(129, 140, 248, 0.06)" stroke-width="1" />
+    <path d="M 72 256 H 104 M 408 256 H 440 M 256 72 V 104 M 256 408 V 440" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" stroke-linecap="round" />
+
+    <g filter="url(#monogramAura)">
+      <path d="M 134 136 C 134 120 146 108 162 108 H 206 V 376 C 206 392 194 404 178 404 H 162 C 146 404 134 392 134 376 Z" fill="url(#spineGrad)" />
+      <path d="M 136 140 C 136 124 146 114 160 114 H 168 V 398 H 160 C 146 398 136 388 136 374 Z" fill="rgba(255, 255, 255, 0.22)" />
+      <path d="M 182 108 H 368 C 382 108 392 122 386 136 L 358 198 C 353 208 343 214 332 214 H 182 V 108 Z" fill="url(#bladeGrad)" />
+      <path d="M 186 114 H 364 C 372 114 378 122 374 130 L 360 156 C 357 162 351 166 344 166 H 186 V 114 Z" fill="url(#topSpecular)" />
+      <path d="M 182 238 H 316 C 330 238 340 252 334 266 L 310 314 C 305 324 295 330 284 330 H 182 V 238 Z" fill="url(#forgePlasma)" />
+      <path d="M 186 242 H 312 L 298 270 H 186 V 242 Z" fill="url(#midSpecular)" />
+      <path d="M 182 108 L 206 132 V 380 L 182 404 Z" fill="url(#creaseFacet)" opacity="0.85" />
+      <path d="M 182 108 L 186 112 V 400 L 182 404 Z" fill="rgba(255, 255, 255, 0.35)" />
+    </g>
+
+    <g filter="url(#stellarGlow)">
+      <path d="M 368 82 Q 368 118 404 118 Q 368 118 368 154 Q 368 118 332 118 Q 368 118 368 82 Z" fill="#ffffff" />
+      <path d="M 368 96 Q 368 118 390 118 Q 368 118 368 140 Q 368 118 346 118 Q 368 118 368 96 Z" fill="#a5f3fc" />
+      <circle cx="368" cy="118" r="6" fill="#ffffff" />
+      <circle cx="368" cy="118" r="12" fill="#38bdf8" opacity="0.4" />
+      <line x1="320" y1="142" x2="416" y2="94" stroke="#e0f2fe" stroke-width="1.5" stroke-linecap="round" opacity="0.85" />
+    </g>
+  </g>
+</svg>

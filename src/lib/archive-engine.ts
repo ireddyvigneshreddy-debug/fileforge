@@ -7,24 +7,38 @@ export interface ZipEntryInfo {
   date: Date;
 }
 
+const INCOMPRESSIBLE_EXTENSIONS = new Set([
+  'pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'zip', 'gz', 'rar', '7z', 'mp4', 'webm', 'mp3', 'mov', 'docx', 'xlsx', 'pptx', 'fileforge', 'enc'
+]);
+
+export function isAlreadyCompressedFile(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  return INCOMPRESSIBLE_EXTENSIONS.has(ext);
+}
+
 // 1. CREATE ZIP ARCHIVE
 export async function createZipArchive(
   files: File[],
   compressionLevel: number = 6 // 1-9
 ): Promise<{ blob: Blob; size: number }> {
   const zip = new JSZip();
+  let hasCompressible = false;
 
   for (const file of files) {
     const arrayBuffer = await file.arrayBuffer();
-    zip.file(file.name, arrayBuffer);
+    const isComp = isAlreadyCompressedFile(file.name);
+    if (!isComp) hasCompressible = true;
+
+    zip.file(file.name, arrayBuffer, {
+      compression: isComp ? 'STORE' : 'DEFLATE',
+      compressionOptions: isComp ? undefined : { level: Math.min(compressionLevel, 6) },
+    });
   }
 
   const zipBlob = await zip.generateAsync({
     type: 'blob',
-    compression: 'DEFLATE',
-    compressionOptions: {
-      level: compressionLevel,
-    },
+    compression: hasCompressible ? 'DEFLATE' : 'STORE',
+    compressionOptions: hasCompressible ? { level: Math.min(compressionLevel, 6) } : undefined,
   });
 
   return { blob: zipBlob, size: zipBlob.size };
@@ -118,6 +132,7 @@ export async function createZipFromBlobs(
 ): Promise<Blob> {
   const zip = new JSZip();
   const seenNames = new Map<string, number>();
+  let hasCompressible = false;
 
   for (const item of items) {
     let name = item.name;
@@ -131,15 +146,21 @@ export async function createZipFromBlobs(
     seenNames.set(item.name, count + 1);
 
     const arrayBuffer = await item.blob.arrayBuffer();
-    zip.file(name, arrayBuffer);
+    const isComp = isAlreadyCompressedFile(name);
+    if (!isComp) hasCompressible = true;
+
+    // Use STORE for already compressed files (PDFs, JPEGs, WebPs, PNGs, etc.)
+    // Avoids heavy CPU lockups and stalls on main thread!
+    zip.file(name, arrayBuffer, {
+      compression: isComp ? 'STORE' : 'DEFLATE',
+      compressionOptions: isComp ? undefined : { level: 1 },
+    });
   }
 
   return await zip.generateAsync({
     type: 'blob',
-    compression: 'DEFLATE',
-    compressionOptions: {
-      level: compressionLevel,
-    },
+    compression: hasCompressible ? 'DEFLATE' : 'STORE',
+    compressionOptions: hasCompressible ? { level: 1 } : undefined,
   });
 }
 

@@ -179,7 +179,7 @@ export const TOOLS: ToolDefinition[] = [
     description: 'Remove password and copy/print restrictions (Single or Batch).',
     longDescription: 'Decrypt protected PDFs and permanently strip print/copy permission locks.',
     icon: 'Unlock',
-    accept: ['.pdf', 'application/pdf'],
+    accept: ['.pdf', 'application/pdf', '.fileforge', '.enc', 'application/octet-stream'],
     maxFiles: 30,
     actionLabel: 'Unlock PDF',
     keywords: ['unlock', 'remove password', 'decrypt', 'pdf', 'batch'],
